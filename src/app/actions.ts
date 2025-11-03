@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { headers } from 'next/headers';
@@ -873,7 +874,7 @@ export async function listDepositRequests(): Promise<DepositRequest[]> {
     .orderBy('requestedAt', 'desc')
     .get();
 
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as DepositRequest) }));
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<DepositRequest, 'id'>) }));
 }
 
 export async function listWithdrawalRequests(): Promise<WithdrawalRequest[]> {
@@ -882,10 +883,7 @@ export async function listWithdrawalRequests(): Promise<WithdrawalRequest[]> {
     .orderBy('requestedAt', 'desc')
     .get();
 
-  return snap.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as WithdrawalRequest),
-  }));
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<WithdrawalRequest, 'id'>) }));
 }
 
 export async function createDepositRequest(
@@ -1464,6 +1462,8 @@ export async function updateAgentCommission(
         return { success: false, message: err.message || 'Failed to update commission rate.' };
     }
 }
+
+    
 
     
 
