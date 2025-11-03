@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { headers } from 'next/headers';
@@ -741,7 +740,10 @@ export async function listUsers(role: UserRole): Promise<UserProfile[]> {
   const currentUser = await getAuthorizedUser();
   if (!currentUser || !['admin', 'agent'].includes(currentUser.role)) return [];
   const snap = await adminDb.collection('users').where('role', '==', role).get();
-  return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as UserProfile) }));
+  return snap.docs.map((d) => {
+    const data = d.data() as UserProfile;
+    return { ...data, uid: d.id };
+  });
 }
 
 /** Admin: list all users (for bet placement) */
@@ -749,7 +751,10 @@ export async function listAllUsers(): Promise<UserProfile[]> {
     const currentUser = await getAuthorizedUser();
     if (!currentUser || currentUser.role !== 'admin') return [];
     const snap = await adminDb.collection('users').get();
-    return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as UserProfile) }));
+    return snap.docs.map((d) => {
+        const data = d.data() as UserProfile;
+        return { ...data, uid: d.id };
+    });
 }
 
 
@@ -758,7 +763,10 @@ export async function listAgentUsers(agentId: string): Promise<UserProfile[]> {
   const currentUser = await getAuthorizedUser();
   if (!currentUser || currentUser.role !== 'agent' || currentUser.uid !== agentId) return [];
   const snap = await adminDb.collection('users').where('agentId', '==', agentId).get();
-  return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as UserProfile) }));
+  return snap.docs.map((d) => {
+    const data = d.data() as UserProfile;
+    return { ...data, uid: d.id };
+  });
 }
 
 /** Enable/Disable user */
@@ -1456,3 +1464,7 @@ export async function updateAgentCommission(
         return { success: false, message: err.message || 'Failed to update commission rate.' };
     }
 }
+
+    
+
+    
