@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if a user is an admin
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'admin';
+    }
+
+    // Helper function to check if a user is an agent
+    function isAgent() {
+       return isAuthenticated() && request.auth.token.role == 'agent';
+    }
+    
+    // Helper function to check if the request is from the owner of the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Only admins can create new users/agents directly
+      allow create: if isAdmin();
+      
+      // Users can read their own profile
+      // Admins can read any user profile
+      // Agents can read profiles of users assigned to them
+      allow read: if isOwner(userId) || isAdmin() || (isAgent() && get(/databases/$(database)/documents/users/$(userId)).data.agentId == request.auth.uid);
+      
+      // Users can update their own profile (name, mobile, upiId)
+      // Admins/Agents can update specific fields (disabled status, wallet balances, limits)
+      allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'mobile', 'upiId'])) ||
+                       (isAdmin() || isAgent());
+
+      // Only admins or agents can delete users
+      allow delete: if isAdmin() || isAgent();
+    }
+
+    // Bets collection
+    match /bets/{betId} {
+      // Only authenticated users can place bets
+      allow create: if isAuthenticated();
+      
+      // Users can read their own bets
+      // Admins and Agents can read bets of their users
+      allow read: if isOwner(request.resource.data.userId) || isAdmin() || (isAgent() && request.resource.data.agentId == request.auth.uid);
+      
+      // Bets cannot be updated or deleted by clients
+      allow update, delete: if false;
+    }
+
+    // Transactions collection
+    match /transactions/{txId} {
+       // Only server-side logic (actions) should create transactions
+       allow create: if false;
+       
+       // Users can read their own transactions
+       // Admins and Agents can see all transactions
+       allow read: if isAuthenticated() && (request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId || isAdmin() || isAgent());
+       
+       allow update, delete: if false;
+    }
+    
+    // Deposit & Withdrawal Requests
+    match /{collection}/{requestId} {
+      // Users can create their own deposit/withdrawal requests
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      
+      // Users can read their own requests
+      // Admins/Agents can read requests related to them
+      allow read: if isAuthenticated() && (isOwner(request.resource.data.userId) || isAdmin() || (isAgent() && request.resource.data.agentId == request.auth.uid));
+
+      // Only Admins/Agents can update (approve/reject) requests
+      allow update: if isAdmin() || isAgent();
+      
+      allow delete: if false;
+    }
+    
+    // Results & Settings can be read by anyone, but only modified by admin (via server actions)
+    match /{collection}/{docId} {
+      allow read: if true;
+      allow write: if false; // All writes should happen via server actions with admin privileges
+    }
+  }
+}

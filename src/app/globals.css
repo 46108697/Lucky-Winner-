@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 48 96.5% 59.2%;
+    --primary-foreground: 48 95.8% 9.8%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 48 96.5% 59.2%;
+    --radius: 0.5rem;
+
+    /* Custom Theme Colors */
+    --royal-blue: 226 70% 12%;
+    --gold: 48 96.5% 59.2%;
+    --dark-card: 224 71.4% 6%;
+    --light-gray: 215.4 16.3% 75%;
+    
+    /* Dark Neon Premium – tokens */
+    --neon-bg:#07070c; --neon-panel:#0b0b14; --neon-border:rgba(127,91,255,.35);
+    --neon-text:#e9e9ff; --neon-dim:#a9a9d9; --neon-purple:#7f5bff; --neon-cyan:#00eaff; --neon-red:#ff3b6b;
+  }
+ 
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 48 96.5% 59.2%;
+    --primary-foreground: 48 95.8% 9.8%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 48 96.5% 59.2%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background:var(--neon-bg); 
+    color:var(--neon-text);
+  }
+  @font-face {
+    font-family: 'Cinzel';
+    src: url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap');
+  }
+}
+
+/* Panels */
+.neon-card{ @apply bg-[var(--neon-panel)] border border-white/10 rounded-2xl backdrop-blur-xl shadow-[0_0_28px_rgba(127,91,255,0.25)]; }
+
+/* Table rows */
+.neon-row:hover{ @apply bg-[#141428] transition-colors; }
+.neon-table-row:hover { @apply bg-[#141422] transition-all; }
+
+
+/* Buttons (Hybrid) */
+.btn-neon{ @apply bg-gradient-to-r from-[var(--neon-purple)] to-[var(--neon-cyan)] text-white font-medium shadow-lg hover:shadow-[0_0_18px_#7f5bff] transition-all rounded-lg; }
+.btn-outline{ @apply border border-[var(--neon-border)] text-[var(--neon-dim)] hover:bg-[#1a1930] transition-all rounded-lg; }
+.btn-danger{ @apply bg-[var(--neon-red)] text-white hover:brightness-110 rounded-lg; }
+.btn-neon-outline { @apply border border-[#7f5bff80] text-[#d9d9ff] hover:bg-[#1c1a2b] transition-all rounded-md; }
+
+
+/* Badges + headings */
+.neon-badge{ @apply bg-[#17162a] border border-[var(--neon-border)] text-[#cfcfff] rounded-md; }
+.neon-title{ @apply text-3xl md:text-4xl font-bold drop-shadow-[0_0_12px_#7f5bff]; }
+.neon-sub{ @apply text-sm text-[var(--neon-dim)]; }
+
+/* Sidebar (Left fixed on desktop) */
+.neon-sidebar{ @apply h-screen w-64 bg-[#08080d] border-r border-[var(--neon-border)] text-[var(--neon-text)] flex-col gap-2 py-6 px-4 shadow-[0_0_25px_rgba(120,50,255,0.25)]; }
+.neon-nav-item{ @apply flex items-center gap-3 text-sm font-medium px-3 py-2 rounded-lg transition-all cursor-pointer text-[#bdbdff] hover:text-white hover:bg-[#1c1b2a] hover:shadow-[0_0_12px_#7f5bffcc]; }
+.neon-nav-active{ @apply bg-[var(--neon-purple)] text-white shadow-[0_0_18px_#7f5bffcc]; }
+.neon-nav-item svg{ @apply w-5 h-5 text-[#a8a8ff]; }
+
+/* Topbar + loader */
+.neon-topbar{ @apply sticky top-0 z-30 bg-[#0a0a12]/70 backdrop-blur-md border-b border-white/10; }
+.neon-loader{ @apply animate-spin; filter: drop-shadow(0 0 10px rgba(0,234,255,0.6)); }
+
+/* Glow card outline */
+.glow-outline { box-shadow: 0 0 0 1px rgba(127,91,255,0.25) inset, 0 0 20px rgba(127,91,255,0.25); }
+
+/* Recharts Neon Helpers */
+.recharts-default-tooltip { color: white; background: #15152a !important; border: 1px solid rgba(127,91,255,.35) !important; border-radius: 10px; }

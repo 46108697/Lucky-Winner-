@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "historical_results",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "lotteryName",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "drawDate",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

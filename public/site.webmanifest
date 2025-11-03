@@ -1,0 +1,21 @@
+{
+  "name": "Lucky Winner",
+  "short_name": "Lucky Winner",
+  "description": "Play Lucky Winner online lottery and gaming platform. Safe, secure, and exciting experience with instant results.",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#0B1B5E",
+  "background_color": "#010417",
+  "display": "standalone",
+  "start_url": "/"
+}
