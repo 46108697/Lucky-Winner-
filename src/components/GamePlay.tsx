@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -219,8 +220,19 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
 
     const check = () => {
       const now = getCurrentISTTime();
-      setMarketOpen({ isOpen: now < gameDetails.openTime, message: `Open closes at ${gameDetails.openTime}` });
-      setMarketClose({ isOpen: now < gameDetails.closeTime, message: now < gameDetails.closeTime ? `Close closes at ${gameDetails.closeTime}` : `Market Closed` });
+      // Check if openTime is defined before comparing
+      const isOpenMarket = gameDetails.openTime ? now < gameDetails.openTime : true;
+      setMarketOpen({
+        isOpen: isOpenMarket,
+        message: gameDetails.openTime ? `Open closes at ${gameDetails.openTime}` : 'Market is open 24/7',
+      });
+
+      // Check if closeTime is defined before comparing
+      const isCloseMarket = gameDetails.closeTime ? now < gameDetails.closeTime : true;
+      setMarketClose({
+        isOpen: isCloseMarket,
+        message: isCloseMarket && gameDetails.closeTime ? `Close closes at ${gameDetails.closeTime}` : `Market Closed`,
+      });
     };
 
     check();
