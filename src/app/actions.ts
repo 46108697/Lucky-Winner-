@@ -1162,7 +1162,7 @@ export async function updateWalletLimit(
   // Added security: Agent can only set limit for their own users
   if(currentUser.role === 'agent') {
       const userDoc = await adminDb.collection('users').doc(uid).get();
-      if(!userDoc.exists() || userDoc.data()?.agentId !== currentUser.uid) {
+      if(!userDoc.exists || userDoc.data()?.agentId !== currentUser.uid) {
           return { success: false, message: 'You can only set limits for your assigned users.'}
       }
   }
