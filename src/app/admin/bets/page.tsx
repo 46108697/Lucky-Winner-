@@ -46,7 +46,7 @@ function ManualBetForm({
     };
 
     const currentRule = rules[betType];
-    const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && betType !== 'jodi';
+    const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && lottery.name !== 'Starline' && betType !== 'jodi';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -97,7 +97,7 @@ function ManualBetForm({
     return (
         <form onSubmit={handleSubmit} className="space-y-4 p-4 border-t">
             <h3 className="font-semibold text-lg">{currentRule.label}</h3>
-            {showBetTimeSelector && lottery.name !== 'Starline' && (
+            {showBetTimeSelector && (
                 <div className="space-y-2">
                     <Label>Bet Time</Label>
                     <RadioGroup value={betTime} onValueChange={(val: any) => setBetTime(val)} className="flex gap-4">
@@ -210,24 +210,35 @@ export default function AdminBetsPage() {
 
                 {selectedUser && selectedLottery && (
                     <Tabs defaultValue="single_ank" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5">
-                            <TabsTrigger value="single_ank">Single Ank</TabsTrigger>
-                            <TabsTrigger value="jodi">Jodi</TabsTrigger>
-                            <TabsTrigger value="single_panna">Single Panna</TabsTrigger>
-                            <TabsTrigger value="double_panna">Double Panna</TabsTrigger>
-                            <TabsTrigger value="triple_panna">Triple Panna</TabsTrigger>
-                            <TabsTrigger value="half_sangam">Half Sangam</TabsTrigger>
-                            <TabsTrigger value="full_sangam">Full Sangam</TabsTrigger>
-                             {selectedLottery.name === 'Starline' && <TabsTrigger value="starline">Starline</TabsTrigger>}
+                        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-7">
+                            {selectedLottery.name.toLowerCase() === 'starline' ? (
+                                <TabsTrigger value="starline">Starline</TabsTrigger>
+                            ) : (
+                                <>
+                                    <TabsTrigger value="single_ank">Single Ank</TabsTrigger>
+                                    <TabsTrigger value="jodi">Jodi</TabsTrigger>
+                                    <TabsTrigger value="single_panna">Single Panna</TabsTrigger>
+                                    <TabsTrigger value="double_panna">Double Panna</TabsTrigger>
+                                    <TabsTrigger value="triple_panna">Triple Panna</TabsTrigger>
+                                    <TabsTrigger value="half_sangam">Half Sangam</TabsTrigger>
+                                    <TabsTrigger value="full_sangam">Full Sangam</TabsTrigger>
+                                </>
+                            )}
                         </TabsList>
-                        <TabsContent value="single_ank"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="single_ank" onBetPlaced={fetchInitialData} /></TabsContent>
-                        <TabsContent value="jodi"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="jodi" onBetPlaced={fetchInitialData} /></TabsContent>
-                        <TabsContent value="single_panna"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="single_panna" onBetPlaced={fetchInitialData} /></TabsContent>
-                        <TabsContent value="double_panna"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="double_panna" onBetPlaced={fetchInitialData} /></TabsContent>
-                        <TabsContent value="triple_panna"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="triple_panna" onBetPlaced={fetchInitialData} /></TabsContent>
-                         <TabsContent value="half_sangam"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="half_sangam" onBetPlaced={fetchInitialData} /></TabsContent>
-                        <TabsContent value="full_sangam"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="full_sangam" onBetPlaced={fetchInitialData} /></TabsContent>
-                        {selectedLottery.name === 'Starline' && <TabsContent value="starline"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="starline" onBetPlaced={fetchInitialData} /></TabsContent>}
+                        
+                        {selectedLottery.name.toLowerCase() === 'starline' ? (
+                             <TabsContent value="starline"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="starline" onBetPlaced={fetchInitialData} /></TabsContent>
+                        ) : (
+                            <>
+                                <TabsContent value="single_ank"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="single_ank" onBetPlaced={fetchInitialData} /></TabsContent>
+                                <TabsContent value="jodi"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="jodi" onBetPlaced={fetchInitialData} /></TabsContent>
+                                <TabsContent value="single_panna"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="single_panna" onBetPlaced={fetchInitialData} /></TabsContent>
+                                <TabsContent value="double_panna"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="double_panna" onBetPlaced={fetchInitialData} /></TabsContent>
+                                <TabsContent value="triple_panna"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="triple_panna" onBetPlaced={fetchInitialData} /></TabsContent>
+                                <TabsContent value="half_sangam"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="half_sangam" onBetPlaced={fetchInitialData} /></TabsContent>
+                                <TabsContent value="full_sangam"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="full_sangam" onBetPlaced={fetchInitialData} /></TabsContent>
+                            </>
+                        )}
                     </Tabs>
                 )}
             </Card>

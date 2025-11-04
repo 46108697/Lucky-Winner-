@@ -125,12 +125,13 @@ const processWinners = async (
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
     { type: 'triple_panna', time: resultType },
-    { type: 'starline' }
   ];
-
+  
   if (lotteryName.toLowerCase().includes('starline')) {
-    // Starline specific logic is already included
-  } else if (resultType === 'close') {
+    betChecks.push({ type: 'starline' });
+  }
+
+  if (resultType === 'close') {
     betChecks.push({ type: 'jodi' });
     betChecks.push({ type: 'half_sangam' });
     betChecks.push({ type: 'full_sangam' });
@@ -217,12 +218,12 @@ const processWinners = async (
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
 
-      } else if (resultType === 'close' && bet.status === 'placed') {
+      } else if (resultType === 'close') {
           // If it's the closing result and the bet didn't win, it's lost.
-          // This handles jodi, sangam, and any 'close' time bets.
+          // This handles jodi, sangam, and any 'close' time bets that didn't win.
           transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (resultType === 'open' && bet.betTime === 'open' && bet.status === 'placed') {
-         // If it's the opening result, only 'open' time bets are settled as lost.
+      } else if (resultType === 'open' && bet.betTime === 'open') {
+         // If it's the opening result, only 'open' time bets that didn't win are settled as lost.
          // 'close' time bets remain 'placed'.
          transaction.update(betDoc.ref, { status: 'lost' });
       }
@@ -407,22 +408,21 @@ export async function placeBet(betDetails: {
       if (profile.walletLimit != null && (profile.walletBalance) > profile.walletLimit)
         return { success: false, message: `Wallet limit ${profile.walletLimit} reached.` };
 
-      // market checks
-      const now = nowIST();
-      const hhmm = timeHHMM(now);
-
-      if (lottery.openTime && lottery.closeTime) {
-        // jodi/half/full sangam only before open
+      // market checks (skip for Starline)
+      if (lottery.name.toLowerCase() !== 'starline' && lottery.openTime && lottery.closeTime) {
+        const now = nowIST();
+        const hhmm = timeHHMM(now);
+        
         const isBeforeOpen = hhmm < lottery.openTime;
         const isBeforeClose = hhmm < lottery.closeTime;
 
         if (['jodi', 'half_sangam', 'full_sangam'].includes(betType)) {
           if (!isBeforeOpen)
-            return { success: false, message: 'Betting closed for this market.' };
+            return { success: false, message: 'Betting closed for this market. Jodi/Sangam can only be placed before Open time.' };
         } else if (betTime === 'open') {
-          if (!isBeforeOpen) return { success: false, message: 'Open market closed.' };
+          if (!isBeforeOpen) return { success: false, message: 'Open market is closed.' };
         } else if (betTime === 'close') {
-          if (!isBeforeClose) return { success: false, message: 'Close market closed.' };
+          if (!isBeforeClose) return { success: false, message: 'Close market is closed.' };
         }
       }
 
@@ -494,12 +494,13 @@ export async function declareResultManually(
           openAnk: string | undefined,
           closePanna: string | undefined,
           closeAnk: string | undefined;
+      
+      const existingData = resultDoc.exists ? resultDoc.data() as LotteryResult : {};
 
       if (resultType === 'open') {
         openPanna = panna;
         openAnk = ank;
       } else { // 'close'
-        const existingData = resultDoc.exists ? resultDoc.data() as LotteryResult : {};
         openPanna = existingData.openPanna;
         openAnk = existingData.openAnk;
         closePanna = panna;

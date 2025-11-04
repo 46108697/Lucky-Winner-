@@ -60,7 +60,7 @@ function BetForm({
     full_sangam: { maxLength: 6, placeholder: '', label: 'Full Sangam' }
   }[betType] ?? { maxLength: 10, placeholder: 'Enter numbers', label: 'Numbers' };
 
-  const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && betType !== 'jodi';
+  const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && gameName !== 'Starline' && betType !== 'jodi';
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -216,7 +216,11 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
   }, [gameName]);
 
   useEffect(() => {
-    if (!gameDetails) return;
+    if (!gameDetails || gameDetails.name.toLowerCase() === 'starline') {
+        setMarketOpen({ isOpen: true, message: 'Market is open 24/7' });
+        setMarketClose({ isOpen: true, message: '' });
+        return;
+    };
 
     const check = () => {
       const now = getCurrentISTTime();
@@ -244,13 +248,39 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
 
   const back = () => window.history.length > 1 ? router.back() : router.push('/');
 
-  if (gameName === "Starline") {
+  if (gameName.toLowerCase() === "starline") {
     return (
-      <div className="space-y-6">
-        <Button variant="outline" size="icon" onClick={back}><ArrowLeft /></Button>
-        <Card><CardHeader><CardTitle>Starline</CardTitle></CardHeader></Card>
-        <Card><CardContent><BetForm gameName={gameName} betType="starline" userId={user.uid} disabled={false} disabledMessage="" onBetPlaced={() => {}} /></CardContent></Card>
-      </div>
+        <div className="space-y-6">
+            <Button variant="outline" size="icon" onClick={back}><ArrowLeft /></Button>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Star className="text-primary"/> Starline</CardTitle>
+                    <CardDescription>This market is open 24/7. Results are declared periodically.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Your Balance:</span>
+                    <span className="font-bold flex items-center gap-1">
+                        <IndianRupee className="h-4 w-4" /> 
+                        {user.profile.walletBalance.toFixed(2)}
+                    </span>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Place Your Bet</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <BetForm 
+                        gameName={gameName} 
+                        betType="starline" 
+                        userId={user.uid} 
+                        disabled={false} 
+                        disabledMessage="" 
+                        onBetPlaced={() => {}} 
+                    />
+                </CardContent>
+            </Card>
+        </div>
     );
   }
 
@@ -263,7 +293,13 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
           <CardTitle>{gameName}</CardTitle>
           <CardDescription>{marketOpen.isOpen ? marketOpen.message : marketClose.message}</CardDescription>
         </CardHeader>
-        <CardContent className="flex justify-between"><span>Balance:</span><span><IndianRupee className="h-4 inline" /> {user.profile.walletBalance.toFixed(2)}</span></CardContent>
+        <CardContent className="flex justify-between">
+            <span className="text-sm font-medium">Balance:</span>
+            <span className="font-bold flex items-center gap-1">
+                <IndianRupee className="h-4 w-4" /> 
+                {user.profile.walletBalance.toFixed(2)}
+            </span>
+        </CardContent>
       </Card>
 
       <Tabs defaultValue="single_ank">
@@ -275,7 +311,7 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
           <TabsTrigger value="full_sangam">Full Sangam</TabsTrigger>
         </TabsList>
 
-        <Card className="mt-4"><CardContent>
+        <Card className="mt-4"><CardContent className="pt-6">
           <TabsContent value="single_ank">{<BetForm gameName={gameName} betType="single_ank" userId={user.uid} onBetPlaced={() => {}} disabled={isDisabled} disabledMessage="Market Closed" />}</TabsContent>
           <TabsContent value="jodi">{<BetForm gameName={gameName} betType="jodi" userId={user.uid} onBetPlaced={() => {}} disabled={!marketOpen.isOpen} disabledMessage="Jodi only before open" />}</TabsContent>
           <TabsContent value="panna">{<PannaBetting gameName={gameName} userId={user.uid} disabled={isDisabled} disabledMessage="Market Closed" onBetPlaced={() => {}} />}</TabsContent>
