@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { headers } from 'next/headers';
@@ -568,7 +569,7 @@ export async function declareResultManually(
 
   } catch (err: any) {
     console.error('declareResultManually error:', err);
-    return { success: false, message: 'Failed to declare result.' };
+    return { success: false, message: err.message || 'Failed to declare result.' };
   }
 }
 
