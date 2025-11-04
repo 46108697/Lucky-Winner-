@@ -112,7 +112,7 @@ export default function RegisterPage() {
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-background border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -121,7 +121,7 @@ export default function RegisterPage() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-background border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -131,7 +131,7 @@ export default function RegisterPage() {
             inputMode="numeric"
             value={mobile}
             onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-background border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
             maxLength={15}
@@ -141,7 +141,7 @@ export default function RegisterPage() {
             placeholder="Password (min. 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-background border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -150,7 +150,7 @@ export default function RegisterPage() {
             placeholder="Re-enter Password"
             value={rePassword}
             onChange={(e) => setRePassword(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-background border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -197,5 +197,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-
-    
