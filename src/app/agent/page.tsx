@@ -22,17 +22,19 @@ export default function AgentDashboard() {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
     
-    const fetchStats = useCallback(async (agentId: string) => {
+    const fetchStats = useCallback(async () => {
         setLoading(true);
-        const fetchedStats = await getDashboardStats(agentId);
-        setStats(fetchedStats);
+        const response = await getDashboardStats();
+        if (response.success) {
+            setStats(response.stats);
+        }
         setLoading(false);
     }, []);
 
     useEffect(() => {
        const unsubscribe = onAuthStateChanged(auth, (user) => {
            if (user) {
-               fetchStats(user.uid);
+               fetchStats();
            } else {
                router.push('/login');
            }
@@ -44,7 +46,7 @@ export default function AgentDashboard() {
         <div>
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold">Agent Dashboard</h1>
-                <Button variant="outline" size="sm" onClick={() => auth.currentUser && fetchStats(auth.currentUser.uid)} disabled={loading}>
+                <Button variant="outline" size="sm" onClick={fetchStats} disabled={loading}>
                     <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                     <span className="ml-2 hidden sm:inline">Refresh</span>
                 </Button>
