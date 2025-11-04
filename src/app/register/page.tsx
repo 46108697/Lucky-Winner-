@@ -4,10 +4,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Gem, Home } from "lucide-react";
+import { Gem, Home, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleAuthProvider, signInWithRedirect, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import { handleSignIn } from "../actions";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 48 48">
@@ -53,14 +54,25 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // You can add user profile update logic here if needed
-      toast({
-        title: "Registration Successful!",
-        description: "You have been successfully registered.",
-      });
-      router.push("/login");
+      // Now create the profile in Firestore via server action
+      if (userCredential.user) {
+        const signInResult = await handleSignIn(userCredential.user.uid, userCredential.user.email, name);
+        if (signInResult.success) {
+            toast({
+                title: "Registration Successful!",
+                description: "You can now log in.",
+            });
+            router.push("/login");
+        } else {
+            setError(signInResult.message);
+        }
+      }
     } catch (error: any) {
-      setError(error.message);
+        if (error.code === 'auth/email-already-in-use') {
+            setError('This email is already registered. Please login.');
+        } else {
+            setError(error.message);
+        }
     } finally {
       setLoading(false);
     }
@@ -73,7 +85,7 @@ export default function RegisterPage() {
     try {
         await signInWithRedirect(auth, provider);
         // The user will be redirected to Google's sign-in page.
-        // The result is handled on the main page after redirect.
+        // The result is handled on the login page after redirect.
     } catch(err: any) {
         setError("Failed to start Google sign-in. Please try again.");
         console.error(err);
@@ -100,7 +112,7 @@ export default function RegisterPage() {
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -109,7 +121,7 @@ export default function RegisterPage() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -119,7 +131,7 @@ export default function RegisterPage() {
             inputMode="numeric"
             value={mobile}
             onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
             maxLength={15}
@@ -129,7 +141,7 @@ export default function RegisterPage() {
             placeholder="Password (min. 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -138,7 +150,7 @@ export default function RegisterPage() {
             placeholder="Re-enter Password"
             value={rePassword}
             onChange={(e) => setRePassword(e.target.value)}
-            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-gray-900 placeholder-gray-500 outline-none focus:ring-2 focus:ring-gold"
+            className="w-full p-3 rounded-lg bg-royalBlue border border-gold/50 text-white placeholder-lightGray outline-none focus:ring-2 focus:ring-gold"
             required
             disabled={loading}
           />
@@ -148,7 +160,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full bg-gold text-royalBlue font-bold px-6 py-3 rounded-full hover:bg-transparent hover:border hover:border-gold hover:text-gold transition transform hover:scale-105 disabled:opacity-50"
           >
-            {loading ? "Registering..." : "Register"}
+            {loading ? <><Loader2 className="animate-spin mr-2" /> Registering...</> : "Register"}
           </button>
         </form>
 
@@ -185,3 +197,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    

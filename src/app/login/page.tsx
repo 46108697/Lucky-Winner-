@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged } from "firebase/auth";
 import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase/client';
 import { Gem, Loader2, Home } from "lucide-react";
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { handleSignIn } from "../actions";
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5" viewBox="0 0 48 48">
@@ -36,32 +37,40 @@ export default function UnifiedLoginPage() {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
-          const userDocRef = doc(db, 'users', result.user.uid);
-          const userDoc = await getDoc(userDocRef);
-
+          await handleSignIn(result.user.uid, result.user.email, result.user.displayName);
           toast({ title: "Google login successful!" });
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data() as UserProfile;
-             switch (userData.role) {
-                case 'admin':
-                  router.push('/admin'); break;
-                case 'agent':
-                  router.push('/agent'); break;
-                case 'user':
-                default:
-                  router.push('/'); break;
-              }
-          } else {
-            // New user, default redirect
-            router.push('/');
-          }
+          // The onAuthStateChanged listener will handle redirection
         }
       } catch (err) {
         console.error("Google Redirect Error:", err);
       }
     };
     handleRedirect();
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if(user) {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                const userData = userDoc.data() as UserProfile;
+                 switch (userData.role) {
+                    case 'admin':
+                      router.push('/admin'); break;
+                    case 'agent':
+                      router.push('/agent'); break;
+                    case 'user':
+                    default:
+                      router.push('/'); break;
+                  }
+            } else {
+                // If profile doesn't exist yet, handleSignIn should be creating it.
+                // We can wait a moment and re-check, or just redirect to home and let other pages handle it.
+                router.push('/');
+            }
+        }
+    });
+
+    return () => unsubscribe();
   }, [router, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -70,7 +79,7 @@ export default function UnifiedLoginPage() {
     setLoading(true);
 
     if (!identifier || !password) {
-      setError("कृपया ID/Email और पासवर्ड दोनों दर्ज करें।");
+      setError("Please enter both ID/Email and password.");
       setLoading(false);
       return;
     }
@@ -85,28 +94,21 @@ export default function UnifiedLoginPage() {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        setError("कोई खाता नहीं मिला।");
+        setError("No account found.");
         setLoading(false);
         return;
       }
 
       const userData = querySnapshot.docs[0].data() as UserProfile;
 
-      await signInWithEmailAndPassword(auth, userData.email, password);
-
-      switch (userData.role) {
-        case 'admin':
-          router.push('/admin'); break;
-        case 'agent':
-          router.push('/agent'); break;
-        case 'user':
-        default:
-          router.push('/'); break;
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, userData.email, password);
+      
+      // onAuthStateChanged will handle the redirect
+      toast({ title: `Welcome back, ${userCredential.user.displayName || userData.name}!` });
 
     } catch (err: any) {
       console.error(err);
-      setError(err.code === 'auth/wrong-password' ? "गलत पासवर्ड।" : "कुछ गलती हुई।");
+      setError(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? "Incorrect password." : "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -177,3 +179,5 @@ export default function UnifiedLoginPage() {
     </div>
   );
 }
+
+    
