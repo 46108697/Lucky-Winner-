@@ -92,7 +92,7 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && type !== 'starline' && type !== 'jodi' && type !== 'half_sangam' && type !== 'full_sangam') q = q.where('betTime', '==', time);
+    if (time && !['starline', 'jodi', 'half_sangam', 'full_sangam'].includes(type)) q = q.where('betTime', '==', time);
 
     const snap = await transaction.get(q);
 
@@ -125,10 +125,10 @@ const processWinners = async (
           break;
         }
         case 'half_sangam':
-           if (resultType === 'close') {
-                const openPanna_closeAnk = openPanna && closeAnk ? `${openPanna}${closeAnk}` : undefined;
-                const openAnk_closePanna = openAnk && closePanna ? `${openAnk}${closePanna}` : undefined;
-                if ((openPanna_closeAnk && bet.numbers === openPanna_closeAnk) || (openAnk_closePanna && bet.numbers === openAnk_closePanna)) {
+           if (resultType === 'close' && openAnk && closeAnk && openPanna && closePanna) {
+                const openPanna_closeAnk = `${openPanna}${closeAnk}`;
+                const openAnk_closePanna = `${openAnk}${closePanna}`;
+                if (bet.numbers === openPanna_closeAnk || bet.numbers === openAnk_closePanna) {
                     isWinner = true;
                 }
            }
@@ -432,4 +432,5 @@ export async function GET(request: Request) {
     
 
     
+
 

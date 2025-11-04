@@ -143,7 +143,7 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && type !== 'starline' && type !== 'jodi' && type !== 'half_sangam' && type !== 'full_sangam') {
+    if (time && !['starline', 'jodi', 'half_sangam', 'full_sangam'].includes(type)) {
        q = q.where('betTime', '==', time);
     }
     
@@ -177,10 +177,10 @@ const processWinners = async (
           if (bet.numbers === winningPanna) isWinner = true;
           break;
         case 'half_sangam':
-           if (resultType === 'close') {
-                const openPanna_closeAnk = openPanna && closeAnk ? `${openPanna}${closeAnk}` : undefined;
-                const openAnk_closePanna = openAnk && closePanna ? `${openAnk}${closePanna}` : undefined;
-                if ((openPanna_closeAnk && bet.numbers === openPanna_closeAnk) || (openAnk_closePanna && bet.numbers === openAnk_closePanna)) {
+           if (resultType === 'close' && openAnk && closeAnk && openPanna && closePanna) {
+                const openPanna_closeAnk = `${openPanna}${closeAnk}`;
+                const openAnk_closePanna = `${openAnk}${closePanna}`;
+                if (bet.numbers === openPanna_closeAnk || bet.numbers === openAnk_closePanna) {
                     isWinner = true;
                 }
            }
@@ -546,9 +546,11 @@ export async function declareResultManually(
       
       transaction.set(resultRef, resultData, { merge: true });
 
-      // Also log to historical results
-      const historicalResultRef = adminDb.collection('historical_results').doc();
-      transaction.set(historicalResultRef, { ...resultData, drawDate: new Date().toISOString() });
+      // Only write to historical results on 'close'
+      if (resultType === 'close') {
+          const historicalResultRef = adminDb.collection('historical_results').doc();
+          transaction.set(historicalResultRef, { ...resultData, drawDate: new Date().toISOString() });
+      }
 
       await processWinners(transaction, lotteryName, resultType, ank, panna, {
         openAnk,
