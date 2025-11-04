@@ -482,46 +482,40 @@ export async function declareResultManually(
   panna: string
 ): Promise<{ success: boolean; message: string }> {
   try {
-    // Basic validation
     if (!lotteryName) return { success: false, message: 'Select a lottery.' };
     if (!/^\d{3}$/.test(panna)) return { success: false, message: 'Panna must be 3 digits.' };
 
     const ank = sumDigitsMod10(panna);
-
-    // Read current result doc to know open/close pair
     const resultRef = adminDb.collection('results').doc(lotteryName);
-    const resultDoc = await resultRef.get();
 
-    // Compute new values
-    let openPanna: string | undefined;
-    let openAnk: string | undefined;
-    let closePanna: string | undefined;
-    let closeAnk: string | undefined;
+    await adminDb.runTransaction(async (transaction) => {
+      const resultDoc = await transaction.get(resultRef);
 
-    if (resultDoc.exists) {
-      const r = resultDoc.data() as LotteryResult;
-      openPanna = r.openPanna;
-      openAnk = r.openAnk;
-      closePanna = r.closePanna;
-      closeAnk = r.closeAnk;
-    }
+      let openPanna: string | undefined,
+          openAnk: string | undefined,
+          closePanna: string | undefined,
+          closeAnk: string | undefined;
 
-    if (resultType === 'open') {
-      openPanna = panna;
-      openAnk = ank;
-    } else {
-      closePanna = panna;
-      closeAnk = ank;
-    }
+      if (resultDoc.exists) {
+        const r = resultDoc.data() as LotteryResult;
+        openPanna = r.openPanna;
+        openAnk = r.openAnk;
+      }
 
-    const status: LotteryResult['status'] = resultType === 'open' ? 'open' : 'closed';
-    const jodi = openAnk && closeAnk ? `${openAnk}${closeAnk}` : undefined;
-    const fullResult =
-      openPanna && openAnk && closePanna && closeAnk ? `${openPanna}-${jodi}-${closePanna}` : undefined;
+      if (resultType === 'open') {
+        openPanna = panna;
+        openAnk = ank;
+      } else {
+        closePanna = panna;
+        closeAnk = ank;
+      }
 
-    // Save/Update result
-    if (!resultDoc.exists) {
-      await resultRef.set({
+      const status: LotteryResult['status'] = resultType === 'open' ? 'open' : 'closed';
+      const jodi = openAnk && closeAnk ? `${openAnk}${closeAnk}` : undefined;
+      const fullResult =
+        openPanna && openAnk && closePanna && closeAnk ? `${openPanna}-${jodi}-${closePanna}` : undefined;
+
+      const resultData: Partial<LotteryResult> = {
         lotteryName,
         drawDate: new Date().toISOString(),
         openPanna: openPanna || '',
@@ -532,24 +526,11 @@ export async function declareResultManually(
         fullResult: fullResult || '',
         status,
         source: 'manual',
-      } as LotteryResult);
-    } else {
-      await resultRef.update({
-        openPanna: openPanna || '',
-        openAnk: openAnk || '',
-        closePanna: closePanna || '',
-        closeAnk: closeAnk || '',
-        jodi: jodi || '',
-        fullResult: fullResult || '',
-        status,
-        source: 'manual',
-        drawDate: new Date().toISOString(),
-      } as Partial<LotteryResult>);
-    }
+      };
+      
+      transaction.set(resultRef, resultData, { merge: true });
 
-    // Settle winners + commissions inside transaction
-    await adminDb.runTransaction(async (tx) => {
-      await processWinners(tx, lotteryName, resultType, ank, panna, {
+      await processWinners(transaction, lotteryName, resultType, ank, panna, {
         openAnk,
         closeAnk,
         openPanna,
@@ -557,14 +538,13 @@ export async function declareResultManually(
       });
 
       if (resultType === 'close') {
-        await processCommissions(tx, lotteryName);
+        await processCommissions(transaction, lotteryName);
       }
     });
 
-    // Optional: revalidate admin results page (if using caching)
     revalidatePath('/admin/results');
-
     return { success: true, message: `Result declared for ${lotteryName}.` };
+
   } catch (err) {
     console.error('declareResultManually error:', err);
     return { success: false, message: 'Failed to declare result.' };
@@ -1492,3 +1472,5 @@ export async function updateAgentCommission(
         return { success: false, message: err.message || 'Failed to update commission rate.' };
     }
 }
+
+    
