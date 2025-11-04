@@ -139,13 +139,13 @@ function BetForm({
 
         {sangamType === 'open-panna-close-ank' ? (
             <div className="grid grid-cols-2 gap-4">
-                <div><Label>Open Panna (3)</Label><Input value={openPanna} onChange={e => setOpenPanna(e.target.value.slice(0,3))} /></div>
-                <div><Label>Close Ank (1)</Label><Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.slice(0,1))} /></div>
+                <div><Label>Open Panna (3)</Label><Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} /></div>
+                <div><Label>Close Ank (1)</Label><Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} pattern="[0-9]*" maxLength={1} /></div>
             </div>
         ) : (
              <div className="grid grid-cols-2 gap-4">
-                <div><Label>Open Ank (1)</Label><Input value={openAnk} onChange={e => setOpenAnk(e.target.value.slice(0,1))} /></div>
-                <div><Label>Close Panna (3)</Label><Input value={closePanna} onChange={e => setClosePanna(e.target.value.slice(0,3))} /></div>
+                <div><Label>Open Ank (1)</Label><Input value={openAnk} onChange={e => setOpenAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} pattern="[0-9]*" maxLength={1} /></div>
+                <div><Label>Close Panna (3)</Label><Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} /></div>
             </div>
         )}
         <Label>Amount</Label>
@@ -163,11 +163,11 @@ function BetForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Open Panna (3)</Label>
-            <Input value={openPanna} onChange={e => setOpenPanna(e.target.value.slice(0,3))} />
+            <Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} />
           </div>
           <div>
             <Label>Close Panna (3)</Label>
-            <Input value={closePanna} onChange={e => setClosePanna(e.target.value.slice(0,3))} />
+            <Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} />
           </div>
         </div>
 
@@ -192,7 +192,7 @@ function BetForm({
       )}
 
       <Label>{rules.label}</Label>
-      <Input value={numbers} onChange={e => setNumbers(e.target.value.slice(0, rules.maxLength))} placeholder={rules.placeholder} />
+      <Input value={numbers} onChange={e => setNumbers(e.target.value.slice(0, rules.maxLength))} placeholder={rules.placeholder} pattern="[0-9]*" />
 
       <Label>Amount</Label>
       <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
@@ -348,5 +348,3 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
     </div>
   );
 }
-
-    

@@ -123,13 +123,13 @@ function ManualBetForm({
    
            {sangamType === 'open-panna-close-ank' ? (
                <div className="grid grid-cols-2 gap-4">
-                   <div><Label>Open Panna (3)</Label><Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} /></div>
-                   <div><Label>Close Ank (1)</Label><Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} /></div>
+                   <div><Label>Open Panna (3)</Label><Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} /></div>
+                   <div><Label>Close Ank (1)</Label><Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} pattern="[0-9]*" maxLength={1} /></div>
                </div>
            ) : (
                 <div className="grid grid-cols-2 gap-4">
-                   <div><Label>Open Ank (1)</Label><Input value={openAnk} onChange={e => setOpenAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} /></div>
-                   <div><Label>Close Panna (3)</Label><Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} /></div>
+                   <div><Label>Open Ank (1)</Label><Input value={openAnk} onChange={e => setOpenAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} pattern="[0-9]*" maxLength={1} /></div>
+                   <div><Label>Close Panna (3)</Label><Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} /></div>
                </div>
            )}
             <div className="space-y-2">
@@ -153,11 +153,11 @@ function ManualBetForm({
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <Label>Open Panna (3)</Label>
-                        <Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} />
+                        <Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} />
                     </div>
                     <div>
                         <Label>Close Panna (3)</Label>
-                        <Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} />
+                        <Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} pattern="[0-9]*" maxLength={3} />
                     </div>
                 </div>
                 <div className="space-y-2">
@@ -189,7 +189,7 @@ function ManualBetForm({
             <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="numbers">Numbers</Label>
-                    <Input id="numbers" value={numbers} onChange={e => setNumbers(e.target.value.replace(/[^0-9]/g, '').slice(0, currentRule.maxLength))} placeholder={currentRule.placeholder} />
+                    <Input id="numbers" value={numbers} onChange={e => setNumbers(e.target.value.replace(/[^0-9]/g, '').slice(0, currentRule.maxLength))} placeholder={currentRule.placeholder} pattern="[0-9]*" />
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="amount">Amount</Label>
@@ -291,7 +291,7 @@ export default function AdminBetsPage() {
                 {selectedUser && selectedLottery && (
                     <Tabs defaultValue="single_ank" className="w-full">
                         <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 lg:grid-cols-7">
-                            {selectedLottery.name.toLowerCase() === 'starline' ? (
+                            {selectedLottery.name.toLowerCase().includes('starline') ? (
                                 <TabsTrigger value="starline">Starline</TabsTrigger>
                             ) : (
                                 <>
@@ -306,7 +306,7 @@ export default function AdminBetsPage() {
                             )}
                         </TabsList>
                         
-                        {selectedLottery.name.toLowerCase() === 'starline' ? (
+                        {selectedLottery.name.toLowerCase().includes('starline') ? (
                              <TabsContent value="starline"><ManualBetForm selectedUser={selectedUser} lottery={selectedLottery} betType="starline" onBetPlaced={fetchInitialData} /></TabsContent>
                         ) : (
                             <>
@@ -325,5 +325,3 @@ export default function AdminBetsPage() {
         </div>
     );
 }
-
-    
