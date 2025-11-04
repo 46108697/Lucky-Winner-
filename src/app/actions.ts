@@ -125,10 +125,11 @@ const processWinners = async (
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
     { type: 'triple_panna', time: resultType },
+    { type: 'starline' }
   ];
 
   if (lotteryName.toLowerCase().includes('starline')) {
-    betChecks.push({ type: 'starline' });
+    // Starline specific logic is already included
   } else if (resultType === 'close') {
     betChecks.push({ type: 'jodi' });
     betChecks.push({ type: 'half_sangam' });
@@ -141,7 +142,7 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && type !== 'starline' && betType !== 'jodi') {
+    if (time && type !== 'starline' && type !== 'jodi') {
        q = q.where('betTime', '==', time);
     }
     
@@ -159,6 +160,8 @@ const processWinners = async (
       
       switch (bet.betType) {
         case 'starline':
+          if (bet.numbers === winningAnk) isWinner = true;
+          break;
         case 'single_ank':
           if (bet.numbers === winningAnk) isWinner = true;
           break;
@@ -191,7 +194,7 @@ const processWinners = async (
       }
       
       if (isWinner) {
-        const rateKey = bet.betType === 'starline' ? 'single_ank' : bet.betType;
+        const rateKey = bet.betType;
         const rate = rates[rateKey] ?? 0;
         const payout = bet.amount * rate;
         
@@ -704,8 +707,8 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                     totalRevenue: totalRevenue,
                     pendingDeposits: depositSnap.size,
                     pendingWithdrawals: withdrawSnap.size,
-                    mostPlayedGame: Object.entries(gameCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A',
-                    highestRevenueGame: Object.entries(gameRevenue).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A',
+                    mostPlayedGame: Object.keys(gameCounts).length > 0 ? Object.entries(gameCounts).sort((a, b) => b[1] - a[1])[0][0] : 'N/A',
+                    highestRevenueGame: Object.keys(gameRevenue).length > 0 ? Object.entries(gameRevenue).sort((a, b) => b[1] - a[1])[0][0] : 'N/A',
                     topPerformingAgent: topAgentInfo.name,
                     topAgentCommission: topAgentInfo.commission
                 }
@@ -1486,3 +1489,5 @@ export async function updateAgentCommission(
     
 
       
+
+    
