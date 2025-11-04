@@ -1,20 +1,13 @@
 
 'use server';
 
-import { runFlow } from '@genkit-ai/flow';
-import { getSupportResponse } from '@/ai/flows/customer-support-flow';
+import { getSupportResponse, CustomerSupportInputSchema, CustomerSupportOutputSchema } from '@/ai/flows/customer-support-flow';
 import { z } from 'zod';
 
-const CustomerSupportInput = z.object({
-    question: z.string(),
-    image: z.string().optional(),
-  });
 
-const CustomerSupportOutput = z.string();
-
-export async function getAIChatResponse(input: z.infer<typeof CustomerSupportInput>): Promise<z.infer<typeof CustomerSupportOutput>> {
+export async function getAIChatResponse(input: z.infer<typeof CustomerSupportInputSchema>): Promise<z.infer<typeof CustomerSupportOutputSchema>> {
     try {
-        const result = await runFlow(getSupportResponse, input);
+        const result = await getSupportResponse(input);
         return result;
     } catch (error) {
         console.error("Error in getAIChatResponse:", error);
