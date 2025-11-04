@@ -25,8 +25,8 @@ service cloud.firestore {
 
     // Users collection
     match /users/{userId} {
-      // Only admins can create new users/agents directly
-      allow create: if isAdmin();
+      // Admins, Agents, or the user themselves can create a profile
+      allow create: if isOwner(userId) || isAdmin() || isAgent();
       
       // Users can read their own profile
       // Admins can read any user profile
@@ -34,7 +34,7 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin() || (isAgent() && get(/databases/$(database)/documents/users/$(userId)).data.agentId == request.auth.uid);
       
       // Users can update their own profile (name, mobile, upiId)
-      // Admins/Agents can update specific fields (disabled status, wallet balances, limits)
+      // Admins/Agents can update specific fields
       allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'mobile', 'upiId'])) ||
                        (isAdmin() || isAgent());
 
@@ -48,7 +48,8 @@ service cloud.firestore {
       allow create: if isAuthenticated();
       
       // Users can read their own bets
-      // Admins and Agents can read bets of their users
+      // Admins can read all bets
+      // Agents can read bets of their users
       allow read: if isOwner(request.resource.data.userId) || isAdmin() || (isAgent() && request.resource.data.agentId == request.auth.uid);
       
       // Bets cannot be updated or deleted by clients
@@ -56,9 +57,9 @@ service cloud.firestore {
     }
 
     // Transactions collection
-    match /transactions/{txId} {
-       // Only server-side logic (actions) should create transactions
-       allow create: if false;
+    match /transactions/{transactionId} {
+       // Authenticated users (via server actions) can create transactions
+       allow create: if isAuthenticated();
        
        // Users can read their own transactions
        // Admins and Agents can see all transactions
@@ -67,14 +68,29 @@ service cloud.firestore {
        allow update, delete: if false;
     }
     
-    // Deposit & Withdrawal Requests
-    match /{collection}/{requestId} {
-      // Users can create their own deposit/withdrawal requests
+    // Deposit Requests
+    match /deposits/{requestId} {
+      // Users can create their own deposit requests
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
       
       // Users can read their own requests
-      // Admins/Agents can read requests related to them
-      allow read: if isAuthenticated() && (isOwner(request.resource.data.userId) || isAdmin() || (isAgent() && request.resource.data.agentId == request.auth.uid));
+      // Admins/Agents can read all requests
+      allow read: if isAuthenticated() && (isOwner(request.resource.data.userId) || isAdmin() || isAgent());
+
+      // Only Admins/Agents can update (approve/reject) requests
+      allow update: if isAdmin() || isAgent();
+      
+      allow delete: if false;
+    }
+
+    // Withdrawal Requests
+     match /withdrawals/{requestId} {
+      // Users can create their own withdrawal requests
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      
+      // Users can read their own requests
+      // Admins/Agents can read all requests
+      allow read: if isAuthenticated() && (isOwner(request.resource.data.userId) || isAdmin() || isAgent());
 
       // Only Admins/Agents can update (approve/reject) requests
       allow update: if isAdmin() || isAgent();
