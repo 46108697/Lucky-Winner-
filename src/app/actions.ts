@@ -350,6 +350,7 @@ export async function handleSignIn(
       return { success: true, isNewUser: false, message: 'Logged in successfully!' };
     }
 
+    // If user is authenticated but has no profile, create one.
     const profile: Omit<UserProfile, 'uid'> = {
       name: name || 'Lucky Player',
       email: email || '',
@@ -761,12 +762,11 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             });
             
             const sortedAgents = Object.entries(agentCommissions).sort((a, b) => b[1] - a[1]);
-            const topAgentEntry = sortedAgents.length > 0 ? sortedAgents[0] : null;
             let topAgentInfo = { name: 'N/A', commission: 0 };
 
-            if (topAgentEntry) {
-                const [topAgentId, topCommission] = topAgentEntry;
-                const agentDoc = await adminDb.collection('users').doc(topAgentId).get();
+            if (sortedAgents.length > 0) {
+                const [topAgentId, topCommission] = sortedAgents[0];
+                 const agentDoc = await adminDb.collection('users').doc(topAgentId).get();
                 if(agentDoc.exists) {
                     topAgentInfo = { name: (agentDoc.data() as UserProfile).customId, commission: topCommission };
                 }
@@ -1582,3 +1582,4 @@ export async function updateAgentCommission(
 
 
     
+
