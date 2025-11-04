@@ -34,7 +34,7 @@ service cloud.firestore {
       allow read: if isOwner(userId) || isAdmin() || (isAgent() && get(/databases/$(database)/documents/users/$(userId)).data.agentId == request.auth.uid);
       
       // Users can update their own profile (name, mobile, upiId)
-      // Admins/Agents can update specific fields
+      // Admins/Agents can update specific fields (managed by server actions)
       allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'mobile', 'upiId'])) ||
                        (isAdmin() || isAgent());
 
@@ -50,7 +50,7 @@ service cloud.firestore {
       // Users can read their own bets
       // Admins can read all bets
       // Agents can read bets of their users
-      allow read: if isOwner(request.resource.data.userId) || isAdmin() || (isAgent() && request.resource.data.agentId == request.auth.uid);
+      allow read: if (isAuthenticated() && resource.data.userId == request.auth.uid) || isAdmin() || (isAgent() && resource.data.agentId == request.auth.uid);
       
       // Bets cannot be updated or deleted by clients
       allow update, delete: if false;
@@ -58,8 +58,8 @@ service cloud.firestore {
 
     // Transactions collection
     match /transactions/{transactionId} {
-       // Authenticated users (via server actions) can create transactions
-       allow create: if isAuthenticated();
+       // Transactions should only be created via server-side actions, not directly by clients.
+       allow create: if false;
        
        // Users can read their own transactions
        // Admins and Agents can see all transactions
@@ -98,7 +98,8 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Results & Settings can be read by anyone, but only modified by admin (via server actions)
+    // Results, Settings, and other top-level collections
+    // can be read by anyone, but only modified by admin (via server actions)
     match /{collection}/{docId} {
       allow read: if true;
       allow write: if false; // All writes should happen via server actions with admin privileges
