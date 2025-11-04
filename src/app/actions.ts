@@ -4,7 +4,7 @@
 
 import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-
+import Papa from 'papaparse';
 import { adminAuth, adminDb, FieldValue } from '@/lib/firebase/admin';
 import type {
   UserProfile,
@@ -1470,21 +1470,31 @@ export async function processBankStatement(csvContent: string): Promise<{ succes
     const user = await getAuthorizedUser();
     if (!user || user.role !== 'admin') return { success: false, message: 'Unauthorized.' };
     
-    // Simple parsing, assuming "Transaction ID,Amount" format
-    // This should be made more robust based on the actual CSV format
-    const lines = csvContent.split('\n').slice(1); // Skip header
     let approvedCount = 0;
     let failedCount = 0;
     let notFoundCount = 0;
 
-    for (const line of lines) {
-        if (!line.trim()) continue;
-        const [txnId, amountStr] = line.split(',');
+    const results = Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true
+    });
+
+    // Assuming column names are 'Transaction ID' and 'Amount'
+    // This can be made more robust
+    const requiredHeaders = ['Transaction ID', 'Amount'];
+    if (!results.meta.fields || !requiredHeaders.every(h => results.meta.fields?.includes(h))) {
+        return { success: false, message: `CSV must contain the following headers: ${requiredHeaders.join(', ')}` };
+    }
+
+    for (const row of results.data as any[]) {
+        const txnId = row['Transaction ID'];
+        const amountStr = row['Amount'];
+        
         if (!txnId || !amountStr) {
             failedCount++;
             continue;
-        };
-        
+        }
+
         const amount = parseFloat(amountStr.trim());
         const cleanTxnId = txnId.trim();
 
@@ -1513,7 +1523,7 @@ export async function processBankStatement(csvContent: string): Promise<{ succes
                 notFoundCount++;
             }
         } catch(e) {
-            console.error(`Error processing line: ${line}`, e);
+            console.error(`Error processing row: ${JSON.stringify(row)}`, e);
             failedCount++;
         }
     }
@@ -1582,4 +1592,3 @@ export async function updateAgentCommission(
 
 
     
-
