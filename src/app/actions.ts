@@ -138,7 +138,6 @@ const processWinners = async (
         const userRef = adminDb.collection('users').doc(bet.userId);
         transaction.update(userRef, {
           walletBalance: FieldValue.increment(payout),
-          cashBalance: FieldValue.increment(payout),
         });
 
         const txRef = adminDb.collection('transactions').doc();
@@ -180,7 +179,6 @@ const processWinners = async (
         const userRef = adminDb.collection('users').doc(bet.userId);
         transaction.update(userRef, {
           walletBalance: FieldValue.increment(payout),
-          cashBalance: FieldValue.increment(payout),
         });
 
         const txRef = adminDb.collection('transactions').doc();
@@ -236,7 +234,6 @@ const processWinners = async (
           const userRef = adminDb.collection('users').doc(bet.userId);
           transaction.update(userRef, {
             walletBalance: FieldValue.increment(payout),
-            cashBalance: FieldValue.increment(payout),
           });
           const txRef = adminDb.collection('transactions').doc();
           transaction.set(txRef, { fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail, amount: payout, type: 'win', paymentType: 'cash', timestamp: new Date().toISOString() } as Omit<Transaction, 'id'>);
@@ -456,7 +453,7 @@ export async function placeBet(betDetails: {
         }
       }
 
-      // balance check - USE WALLET BALANCE, NOT CASH BALANCE FOR BETTING
+      // balance check
       if (profile.walletBalance < amount)
         return { success: false, message: 'Insufficient balance.' };
 
@@ -1196,8 +1193,7 @@ export async function updateWalletBalance(
             const updates: { [key: string]: any } = {
                 walletBalance: FieldValue.increment(amount)
             };
-            // Only direct deposit/withdrawal transactions should affect cash balance.
-            // Manual adjustments by agents/admins should primarily use credit.
+            
             if (type === 'credit') {
                 updates.creditBalance = FieldValue.increment(amount);
             } else { // 'cash'
@@ -1549,3 +1545,5 @@ export async function updateAgentCommission(
         return { success: false, message: err.message || 'Failed to update commission rate.' };
     }
 }
+
+    

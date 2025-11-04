@@ -94,7 +94,6 @@ const processWinners = async (
         const userRef = adminDb.collection('users').doc(bet.userId);
         transaction.update(userRef, {
           walletBalance: FieldValue.increment(payout),
-          cashBalance: FieldValue.increment(payout),
         });
 
         const txRef = adminDb.collection('transactions').doc();
@@ -139,7 +138,6 @@ const processWinners = async (
           const userRef = adminDb.collection('users').doc(bet.userId);
           transaction.update(userRef, {
             walletBalance: FieldValue.increment(payout),
-            cashBalance: FieldValue.increment(payout),
           });
 
           const txRef = adminDb.collection('transactions').doc();
@@ -211,7 +209,6 @@ const processWinners = async (
           const userRef = adminDb.collection('users').doc(bet.userId);
           transaction.update(userRef, {
             walletBalance: FieldValue.increment(payout),
-            cashBalance: FieldValue.increment(payout),
           });
 
           const txRef = adminDb.collection('transactions').doc();
@@ -472,15 +469,5 @@ export async function GET(request: Request) {
         });
     }
 }
-
-    
-
-    
-
-    
-
-
-
-
 
     
