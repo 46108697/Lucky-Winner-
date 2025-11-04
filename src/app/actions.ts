@@ -410,7 +410,7 @@ export async function placeBet(betDetails: {
         return { success: false, message: `Wallet limit ${profile.walletLimit} reached.` };
 
       // market checks (skip for Starline)
-      if (lottery.name.toLowerCase() !== 'starline' && lottery.openTime && lottery.closeTime) {
+      if (!lottery.name.toLowerCase().includes('starline') && lottery.openTime && lottery.closeTime) {
         const now = nowIST();
         const hhmm = timeHHMM(now);
         
@@ -645,7 +645,7 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
 
             // If an agent is calling for themselves, return a simplified view
             if (currentUser.role === 'agent') {
-                const totalBetsCount = userBetCounts ? Object.values(userBetCounts).reduce((acc, user) => acc + user.count, 0) : 0;
+                const totalBetsCount = Object.values(userBetCounts).reduce((acc, user) => acc + user.count, 0);
                 return {
                     success: true,
                     stats: {
@@ -699,15 +699,16 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             const topAgentEntry = sortedAgents.length > 0 ? sortedAgents[0] : null;
             let topAgentInfo = { name: 'N/A', commission: 0 };
 
-            if(topAgentEntry) {
+            if (topAgentEntry) {
                 const [topAgentId, topCommission] = topAgentEntry;
                 const agentDoc = await adminDb.collection('users').doc(topAgentId).get();
                 if(agentDoc.exists) {
                     topAgentInfo = { name: (agentDoc.data() as UserProfile).customId, commission: topCommission };
                 }
-            } else {
+            } else if (agentsSnap.size > 0) {
                  topAgentInfo = { name: 'N/A', commission: 0 };
             }
+
 
             return {
                 success: true,
@@ -1500,6 +1501,8 @@ export async function updateAgentCommission(
     
 
       
+
+    
 
     
 
