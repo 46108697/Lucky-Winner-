@@ -120,30 +120,30 @@ const processWinners = async (
 ) => {
   const { rates } = await getGameSettings();
 
-  // Prepare filters by resultType
-  const checks: { type: BetType; time?: BetTime }[] = [
+  const betChecks: { type: BetType; time?: BetTime }[] = [
     { type: 'single_ank', time: resultType },
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
     { type: 'triple_panna', time: resultType },
   ];
-  
+
   if (lotteryName.toLowerCase().includes('starline')) {
-    checks.push({ type: 'starline' });
+    betChecks.push({ type: 'starline' });
+  } else if (resultType === 'close') {
+    betChecks.push({ type: 'jodi' });
+    betChecks.push({ type: 'half_sangam' });
+    betChecks.push({ type: 'full_sangam' });
   }
 
-  if (resultType === 'close') {
-    checks.push({ type: 'jodi' }, { type: 'half_sangam' }, { type: 'full_sangam' });
-  }
-
-  for (const { type, time } of checks) {
-    let q = adminDb
-      .collection('bets')
+  for (const { type, time } of betChecks) {
+    let q = adminDb.collection('bets')
       .where('lotteryName', '==', lotteryName)
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time) q = q.where('betTime', '==', time);
+    if (time && !lotteryName.toLowerCase().includes('starline')) {
+      q = q.where('betTime', '==', time);
+    }
 
     const snap = await transaction.get(q);
 
@@ -151,32 +151,29 @@ const processWinners = async (
       const bet = betDoc.data() as Bet;
       let isWinner = false;
 
-      // Derived winning values
       const openAnk = openClosePair?.openAnk;
       const closeAnk = openClosePair?.closeAnk;
       const openPanna = openClosePair?.openPanna;
       const closePanna = openClosePair?.closePanna;
       const winningJodi = openAnk && closeAnk ? `${openAnk}${closeAnk}` : undefined;
-
+      
       switch (bet.betType) {
-        case 'single_ank': {
+        case 'starline':
+        case 'single_ank':
           if (bet.numbers === winningAnk) isWinner = true;
           break;
-        }
-        case 'jodi': {
+        case 'jodi':
           if (resultType === 'close' && winningJodi && bet.numbers === winningJodi) {
             isWinner = true;
           }
           break;
-        }
         case 'single_panna':
         case 'double_panna':
-        case 'triple_panna': {
+        case 'triple_panna':
           if (bet.numbers === winningPanna) isWinner = true;
           break;
-        }
-        case 'half_sangam': {
-          if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
+        case 'half_sangam':
+           if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
              const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
              const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
             if (bet.numbers === pattern1 || bet.numbers === pattern2) {
@@ -184,27 +181,22 @@ const processWinners = async (
             }
           }
           break;
-        }
-        case 'full_sangam': {
+        case 'full_sangam':
           if (resultType === 'close' && openPanna && closePanna) {
             if (bet.numbers === `${openPanna}${closePanna}`) {
               isWinner = true;
             }
           }
           break;
-        }
-        case 'starline': {
-          if (bet.numbers === winningAnk) isWinner = true;
-          break;
-        }
       }
-
+      
       if (isWinner) {
-        const rate = rates[bet.betType] ?? 0;
+        const rateKey = bet.betType === 'starline' ? 'single_ank' : bet.betType;
+        const rate = rates[rateKey] ?? 0;
         const payout = bet.amount * rate;
-
+        
         transaction.update(betDoc.ref, { status: 'won', payout });
-
+        
         const userRef = adminDb.collection('users').doc(bet.userId);
         transaction.update(userRef, {
           walletBalance: FieldValue.increment(payout),
@@ -221,11 +213,10 @@ const processWinners = async (
           paymentType: 'cash',
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
+
       } else if (resultType === 'close' && (!time || time === 'close')) {
-        // At close declaration, remaining close bets (and jodi/sangam) are settled as lost
         transaction.update(betDoc.ref, { status: 'lost' });
       } else if (resultType === 'open' && time === 'open') {
-         // Mark open bets as lost if they didn't win
          transaction.update(betDoc.ref, { status: 'lost' });
       }
     }
@@ -406,7 +397,7 @@ export async function placeBet(betDetails: {
 
       // account checks
       if (profile.disabled) return { success: false, message: 'User account is disabled.' };
-      if (profile.walletLimit != null && (profile.walletBalance + 0) > profile.walletLimit)
+      if (profile.walletLimit != null && (profile.walletBalance) > profile.walletLimit)
         return { success: false, message: `Wallet limit ${profile.walletLimit} reached.` };
 
       // market checks
@@ -475,6 +466,7 @@ export async function placeBet(betDetails: {
   }
 }
 
+
 /** Declare result (manual) — saves result + settles winners + commissions */
 export async function declareResultManually(
   lotteryName: string,
@@ -486,9 +478,9 @@ export async function declareResultManually(
     if (!/^\d{3}$/.test(panna)) return { success: false, message: 'Panna must be 3 digits.' };
 
     const ank = sumDigitsMod10(panna);
-    const resultRef = adminDb.collection('results').doc(lotteryName);
 
     await adminDb.runTransaction(async (transaction) => {
+      const resultRef = adminDb.collection('results').doc(lotteryName);
       const resultDoc = await transaction.get(resultRef);
 
       let openPanna: string | undefined,
@@ -545,7 +537,7 @@ export async function declareResultManually(
     revalidatePath('/admin/results');
     return { success: true, message: `Result declared for ${lotteryName}.` };
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('declareResultManually error:', err);
     return { success: false, message: 'Failed to declare result.' };
   }
@@ -1304,36 +1296,26 @@ export async function listTransactions(userId: string, role: UserRole): Promise<
     const currentUser = await getAuthorizedUser();
     if (!currentUser) return [];
 
-    let query: FirebaseFirestore.Query = adminDb.collection('transactions');
-    
-    if (role === 'user' && currentUser.uid === userId) {
-        // A user can see transactions where they are either the sender or receiver
-        const sentQ = adminDb.collection('transactions').where('fromId', '==', userId);
-        const receivedQ = adminDb.collection('transactions').where('toId', '==', userId);
-        
-        const [sentSnap, receivedSnap] = await Promise.all([sentQ.get(), receivedQ.get()]);
-        
-        const txMap = new Map<string, Transaction>();
-        sentSnap.docs.forEach(doc => txMap.set(doc.id, { id: doc.id, ...doc.data()} as Transaction));
-        receivedSnap.docs.forEach(doc => txMap.set(doc.id, { id: doc.id, ...doc.data()} as Transaction));
-
-        return Array.from(txMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    } else if (role === 'agent' && currentUser.uid === userId) {
-        const sentQ = adminDb.collection('transactions').where('fromId', '==', userId);
-        const receivedQ = adminDb.collection('transactions').where('toId', '==', userId);
-        
-        const [sentSnap, receivedSnap] = await Promise.all([sentQ.get(), receivedQ.get()]);
-        
-        const txMap = new Map<string, Transaction>();
-        sentSnap.docs.forEach(doc => txMap.set(doc.id, { id: doc.id, ...doc.data()} as Transaction));
-        receivedSnap.docs.forEach(doc => txMap.set(doc.id, { id: doc.id, ...doc.data()} as Transaction));
-
-        return Array.from(txMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    }
-     else if(role === 'admin' && currentUser.role === 'admin') {
-        const snap = await query.orderBy('timestamp', 'desc').limit(200).get();
+    // Allow admin to view all transactions regardless of userId/role passed
+    if(currentUser.role === 'admin') {
+        const snap = await adminDb.collection('transactions').orderBy('timestamp', 'desc').limit(200).get();
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+    }
+    
+    // For users and agents, only allow them to view their own transactions
+    if (currentUser.uid !== userId) return [];
+
+    if (role === 'user' || role === 'agent') {
+        const sentQ = adminDb.collection('transactions').where('fromId', '==', userId);
+        const receivedQ = adminDb.collection('transactions').where('toId', '==', userId);
+        
+        const [sentSnap, receivedSnap] = await Promise.all([sentQ.get(), receivedQ.get()]);
+        
+        const txMap = new Map<string, Transaction>();
+        sentSnap.docs.forEach(doc => txMap.set(doc.id, { id: doc.id, ...doc.data()} as Transaction));
+        receivedSnap.docs.forEach(doc => txMap.set(doc.id, { id: doc.id, ...doc.data()} as Transaction));
+
+        return Array.from(txMap.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }
 
     return [];
