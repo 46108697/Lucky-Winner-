@@ -145,7 +145,7 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && !['starline', 'jodi', 'half_sangam', 'full_sangam'].includes(type)) {
+    if (time && !['jodi', 'half_sangam', 'full_sangam'].includes(type)) {
        q = q.where('betTime', '==', time);
     }
     
@@ -179,22 +179,18 @@ const processWinners = async (
           if (bet.numbers === winningPanna) isWinner = true;
           break;
         case 'half_sangam':
-           if (resultType === 'close' && openAnk && closeAnk && (openPanna || closePanna)) {
-                if (openPanna) {
-                    const openPanna_closeAnk = `${openPanna}${closeAnk}`;
-                    if (bet.numbers === openPanna_closeAnk) isWinner = true;
+           if (resultType === 'close' && openAnk && closeAnk) {
+                if (openPanna && bet.numbers === `${openPanna}${closeAnk}`) {
+                    isWinner = true;
                 }
-                if (closePanna) {
-                    const openAnk_closePanna = `${openAnk}${closePanna}`;
-                    if (bet.numbers === openAnk_closePanna) isWinner = true;
+                if (closePanna && bet.numbers === `${openAnk}${closePanna}`) {
+                    isWinner = true;
                 }
            }
           break;
         case 'full_sangam':
-          if (resultType === 'close' && openPanna && closePanna) {
-            if (bet.numbers === `${openPanna}${closePanna}`) {
-              isWinner = true;
-            }
+          if (resultType === 'close' && openPanna && closePanna && bet.numbers === `${openPanna}${closePanna}`) {
+            isWinner = true;
           }
           break;
       }
@@ -223,16 +219,11 @@ const processWinners = async (
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
 
-      } else if (bet.betType === 'starline') {
-          // Starline bets are settled as soon as a result is out
+      } else if (lotteryName.toLowerCase().includes('starline') && bet.betType === 'starline') {
           transaction.update(betDoc.ref, { status: 'lost' });
       } else if (resultType === 'close') {
-          // If it's the closing result and the bet didn't win, it's lost.
-          // This handles jodi, sangam, and any 'close' time bets that didn't win.
           transaction.update(betDoc.ref, { status: 'lost' });
       } else if (resultType === 'open' && bet.betTime === 'open') {
-         // If it's the opening result, only 'open' time bets that didn't win are settled as lost.
-         // 'close' time bets remain 'placed'.
          transaction.update(betDoc.ref, { status: 'lost' });
       }
     }
@@ -1521,6 +1512,8 @@ export async function updateAgentCommission(
     
 
       
+
+    
 
     
 
