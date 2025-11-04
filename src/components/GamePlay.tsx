@@ -60,7 +60,7 @@ function BetForm({
     full_sangam: { maxLength: 6, placeholder: '', label: 'Full Sangam' }
   }[betType] ?? { maxLength: 10, placeholder: 'Enter numbers', label: 'Numbers' };
 
-  const showBetTimeSelector = betType.includes('ank') || betType.includes('panna');
+  const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && betType !== 'jodi';
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();

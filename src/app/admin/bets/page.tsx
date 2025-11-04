@@ -46,7 +46,7 @@ function ManualBetForm({
     };
 
     const currentRule = rules[betType];
-    const showBetTimeSelector = betType.includes('ank') || betType.includes('panna');
+    const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && betType !== 'jodi';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -145,6 +145,7 @@ export default function AdminBetsPage() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
+                // IIFE to run async function in useEffect
                 (async () => {
                     await fetchInitialData();
                 })();
