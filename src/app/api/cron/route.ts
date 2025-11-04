@@ -70,19 +70,23 @@ const processWinners = async (
 ) => {
   const { rates } = await getGameSettings();
 
-  const betChecks: { type: BetType; time?: BetTime }[] = [
-    { type: 'single_ank', time: resultType },
-    { type: 'single_panna', time: resultType },
-    { type: 'double_panna', time: resultType },
-    { type: 'triple_panna', time: resultType },
-  ];
-  
+  const betChecks: { type: BetType; time?: BetTime }[] = [];
+
   if (lotteryName.toLowerCase().includes('starline')) {
     betChecks.push({ type: 'starline' });
+  } else {
+     betChecks.push(
+        { type: 'single_ank', time: resultType },
+        { type: 'single_panna', time: resultType },
+        { type: 'double_panna', time: resultType },
+        { type: 'triple_panna', time: resultType },
+     );
   }
 
-  if (resultType === 'close') {
-    betChecks.push({ type: 'jodi' }, { type: 'half_sangam' }, { type: 'full_sangam' });
+  if (resultType === 'close' && !lotteryName.toLowerCase().includes('starline')) {
+    betChecks.push({ type: 'jodi' });
+    betChecks.push({ type: 'half_sangam' });
+    betChecks.push({ type: 'full_sangam' });
   }
 
   for (const { type, time } of betChecks) {
@@ -125,11 +129,14 @@ const processWinners = async (
           break;
         }
         case 'half_sangam':
-           if (resultType === 'close' && openAnk && closeAnk && openPanna && closePanna) {
-                const openPanna_closeAnk = `${openPanna}${closeAnk}`;
-                const openAnk_closePanna = `${openAnk}${closePanna}`;
-                if (bet.numbers === openPanna_closeAnk || bet.numbers === openAnk_closePanna) {
-                    isWinner = true;
+           if (resultType === 'close' && openAnk && closeAnk && (openPanna || closePanna)) {
+                if (openPanna) {
+                    const openPanna_closeAnk = `${openPanna}${closeAnk}`;
+                    if (bet.numbers === openPanna_closeAnk) isWinner = true;
+                }
+                if (closePanna) {
+                    const openAnk_closePanna = `${openAnk}${closePanna}`;
+                    if (bet.numbers === openAnk_closePanna) isWinner = true;
                 }
            }
           break;
@@ -432,5 +439,6 @@ export async function GET(request: Request) {
     
 
     
+
 
 

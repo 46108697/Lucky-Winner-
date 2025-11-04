@@ -120,18 +120,20 @@ const processWinners = async (
 ) => {
   const { rates } = await getGameSettings();
 
-  const betChecks: { type: BetType; time?: BetTime }[] = [
-    { type: 'single_ank', time: resultType },
-    { type: 'single_panna', time: resultType },
-    { type: 'double_panna', time: resultType },
-    { type: 'triple_panna', time: resultType },
-  ];
-  
+  const betChecks: { type: BetType; time?: BetTime }[] = [];
+
   if (lotteryName.toLowerCase().includes('starline')) {
     betChecks.push({ type: 'starline' });
+  } else {
+     betChecks.push(
+        { type: 'single_ank', time: resultType },
+        { type: 'single_panna', time: resultType },
+        { type: 'double_panna', time: resultType },
+        { type: 'triple_panna', time: resultType },
+     );
   }
 
-  if (resultType === 'close') {
+  if (resultType === 'close' && !lotteryName.toLowerCase().includes('starline')) {
     betChecks.push({ type: 'jodi' });
     betChecks.push({ type: 'half_sangam' });
     betChecks.push({ type: 'full_sangam' });
@@ -177,11 +179,14 @@ const processWinners = async (
           if (bet.numbers === winningPanna) isWinner = true;
           break;
         case 'half_sangam':
-           if (resultType === 'close' && openAnk && closeAnk && openPanna && closePanna) {
-                const openPanna_closeAnk = `${openPanna}${closeAnk}`;
-                const openAnk_closePanna = `${openAnk}${closePanna}`;
-                if (bet.numbers === openPanna_closeAnk || bet.numbers === openAnk_closePanna) {
-                    isWinner = true;
+           if (resultType === 'close' && openAnk && closeAnk && (openPanna || closePanna)) {
+                if (openPanna) {
+                    const openPanna_closeAnk = `${openPanna}${closeAnk}`;
+                    if (bet.numbers === openPanna_closeAnk) isWinner = true;
+                }
+                if (closePanna) {
+                    const openAnk_closePanna = `${openAnk}${closePanna}`;
+                    if (bet.numbers === openAnk_closePanna) isWinner = true;
                 }
            }
           break;
@@ -547,7 +552,7 @@ export async function declareResultManually(
       transaction.set(resultRef, resultData, { merge: true });
 
       // Only write to historical results on 'close'
-      if (resultType === 'close') {
+      if (resultType === 'close' && fullResult) {
           const historicalResultRef = adminDb.collection('historical_results').doc();
           transaction.set(historicalResultRef, { ...resultData, drawDate: new Date().toISOString() });
       }
