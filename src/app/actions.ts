@@ -178,7 +178,6 @@ const processWinners = async (
           break;
         case 'half_sangam':
            if (resultType === 'close') {
-                // Open Panna + Close Ank OR Open Ank + Close Panna
                 const openPanna_closeAnk = openPanna && closeAnk ? `${openPanna}${closeAnk}` : undefined;
                 const openAnk_closePanna = openAnk && closePanna ? `${openAnk}${closePanna}` : undefined;
                 if ((openPanna_closeAnk && bet.numbers === openPanna_closeAnk) || (openAnk_closePanna && bet.numbers === openAnk_closePanna)) {

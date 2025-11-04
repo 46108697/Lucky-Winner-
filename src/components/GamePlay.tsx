@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -41,11 +42,13 @@ function BetForm({
   disabledMessage: string;
 }) {
   const [numbers, setNumbers] = useState('');
+  const [openAnk, setOpenAnk] = useState('');
   const [openPanna, setOpenPanna] = useState('');
   const [closeAnk, setCloseAnk] = useState('');
   const [closePanna, setClosePanna] = useState('');
   const [amount, setAmount] = useState('');
   const [betTime, setBetTime] = useState<BetTime>('open');
+  const [sangamType, setSangamType] = useState('open-panna-close-ank');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -73,11 +76,13 @@ function BetForm({
     }
 
     let finalNumbers = numbers;
-    if (betType === 'half_sangam') finalNumbers = `${openPanna}${closeAnk}`;
+    if (betType === 'half_sangam') {
+        finalNumbers = sangamType === 'open-panna-close-ank' ? `${openPanna}${closeAnk}` : `${openAnk}${closePanna}`;
+    }
     if (betType === 'full_sangam') finalNumbers = `${openPanna}${closePanna}`;
 
     if (finalNumbers.length !== rules.maxLength) {
-      toast({ title: 'Invalid Numbers', variant: 'destructive' });
+      toast({ title: 'Invalid Numbers', description: `Please ensure all number fields are filled correctly. Expected length is ${rules.maxLength}.`, variant: 'destructive' });
       return;
     }
 
@@ -102,6 +107,7 @@ function BetForm({
         setAmount('');
         setOpenPanna('');
         setCloseAnk('');
+        setOpenAnk('');
         setClosePanna('');
         onBetPlaced();
       } else {
@@ -123,33 +129,53 @@ function BetForm({
   }
 
   // Half & Full Sangam UI
-  if (betType === 'half_sangam' || betType === 'full_sangam') {
+  if (betType === 'half_sangam') {
+     return (
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <RadioGroup value={sangamType} onValueChange={setSangamType} className="flex gap-4">
+            <div className="flex items-center space-x-2"><RadioGroupItem value="open-panna-close-ank" /><Label>Open Panna + Close Ank</Label></div>
+            <div className="flex items-center space-x-2"><RadioGroupItem value="open-ank-close-panna" /><Label>Open Ank + Close Panna</Label></div>
+        </RadioGroup>
+
+        {sangamType === 'open-panna-close-ank' ? (
+            <div className="grid grid-cols-2 gap-4">
+                <div><Label>Open Panna (3)</Label><Input value={openPanna} onChange={e => setOpenPanna(e.target.value.slice(0,3))} /></div>
+                <div><Label>Close Ank (1)</Label><Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.slice(0,1))} /></div>
+            </div>
+        ) : (
+             <div className="grid grid-cols-2 gap-4">
+                <div><Label>Open Ank (1)</Label><Input value={openAnk} onChange={e => setOpenAnk(e.target.value.slice(0,1))} /></div>
+                <div><Label>Close Panna (3)</Label><Input value={closePanna} onChange={e => setClosePanna(e.target.value.slice(0,3))} /></div>
+            </div>
+        )}
+        <Label>Amount</Label>
+        <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading ? <Loader2 className="animate-spin" /> : 'Submit Half Sangam Bet'}
+        </Button>
+      </form>
+     )
+  }
+
+  if (betType === 'full_sangam') {
     return (
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label>Open Panna</Label>
+            <Label>Open Panna (3)</Label>
             <Input value={openPanna} onChange={e => setOpenPanna(e.target.value.slice(0,3))} />
           </div>
-
-          {betType === 'half_sangam' ? (
-            <div>
-              <Label>Close Ank</Label>
-              <Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.slice(0,1))} />
-            </div>
-          ) : (
-            <div>
-              <Label>Close Panna</Label>
-              <Input value={closePanna} onChange={e => setClosePanna(e.target.value.slice(0,3))} />
-            </div>
-          )}
+          <div>
+            <Label>Close Panna (3)</Label>
+            <Input value={closePanna} onChange={e => setClosePanna(e.target.value.slice(0,3))} />
+          </div>
         </div>
 
         <Label>Amount</Label>
         <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
 
-        <Button type="submit" disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" /> : 'Submit Bet'}
+        <Button type="submit" disabled={loading} className="w-full">
+          {loading ? <Loader2 className="animate-spin" /> : 'Submit Full Sangam Bet'}
         </Button>
       </form>
     );
@@ -171,7 +197,7 @@ function BetForm({
       <Label>Amount</Label>
       <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} />
 
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading} className="w-full">
         {loading ? <Loader2 className="animate-spin" /> : 'Submit Bet'}
       </Button>
     </form>
