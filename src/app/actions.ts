@@ -830,11 +830,14 @@ export async function createUser(
     });
 
     let agentData: UserProfile | null = null;
-    let finalAgentUid: string | undefined = agentUid;
+    let finalAgentUid: string | undefined;
     
-    // If agent is creating, force their ID.
+    // If an agent is creating a user, force their own agent ID
     if (currentUser.role === 'agent') {
         finalAgentUid = currentUser.uid;
+    } else {
+        // If an admin is creating, use the selected ID from the form
+        finalAgentUid = agentUid;
     }
 
     if (finalAgentUid && finalAgentUid !== 'no-agent') {

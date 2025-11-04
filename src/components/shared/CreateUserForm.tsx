@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -48,13 +49,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
             if (role === 'agent') {
                 result = await createAgent(name, email, mobile, password);
             } else {
-                // If the current user is an agent, their UID is automatically used.
-                // If admin, the selected UID from dropdown is used.
-                const agentUidForAction = currentUser?.email && (agents?.find(a=>a.uid === currentUser.uid))
-                    ? currentUser.uid
-                    : assignedAgentUid;
-
-                result = await createUser(name, email, password, mobile, agentUidForAction);
+                result = await createUser(name, email, password, mobile, assignedAgentUid);
             }
             
 
@@ -78,7 +73,10 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
     };
 
     const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-    const isAdminCreatingForUser = role === 'user' && agents !== undefined;
+    
+    // An Admin is creating a user if they are logged in and the `agents` prop is provided.
+    // An Agent is creating a user if they are logged in and the `agents` prop is NOT provided.
+    const isAdminCreatingUser = role === 'user' && agents !== undefined;
 
     return (
         <>
@@ -105,7 +103,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
                     <Label htmlFor={`password-${role}`}>Password</Label>
                     <Input id={`password-${role}`} type="password" placeholder="•••••••• (min. 6 characters)" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
                 </div>
-                {isAdminCreatingForUser && (
+                {isAdminCreatingUser && (
                     <div className="space-y-2">
                         <Label htmlFor="agent-select">Assign to Agent (Optional)</Label>
                         <Select value={assignedAgentUid} onValueChange={setAssignedAgentUid} disabled={loading}>
