@@ -149,6 +149,7 @@ export default function UsersPage() {
 
 
   const filteredUsers = useMemo(() => {
+    const lowercasedSearchTerm = searchTerm.toLowerCase();
     return users
       .filter(user => {
         if (agentFilter === 'all') return true;
@@ -156,11 +157,10 @@ export default function UsersPage() {
         return user.agentId === agentFilter;
       })
       .filter(user => {
-        const term = searchTerm.toLowerCase();
-        if (!term) return true;
+        if (!lowercasedSearchTerm) return true;
         
         const fieldValue = String(user[searchField] || '').toLowerCase();
-        return fieldValue.includes(term);
+        return fieldValue.includes(lowercasedSearchTerm);
     });
   }, [users, searchTerm, searchField, agentFilter]);
 
