@@ -217,11 +217,11 @@ const processWinners = async (
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
 
-      } else if (resultType === 'close') {
+      } else if (resultType === 'close' && bet.status === 'placed') {
           // If it's the closing result and the bet didn't win, it's lost.
           // This handles jodi, sangam, and any 'close' time bets.
           transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (resultType === 'open' && bet.betTime === 'open') {
+      } else if (resultType === 'open' && bet.betTime === 'open' && bet.status === 'placed') {
          // If it's the opening result, only 'open' time bets are settled as lost.
          // 'close' time bets remain 'placed'.
          transaction.update(betDoc.ref, { status: 'lost' });
@@ -495,34 +495,36 @@ export async function declareResultManually(
           closePanna: string | undefined,
           closeAnk: string | undefined;
 
-      if (resultDoc.exists) {
-        const r = resultDoc.data() as LotteryResult;
-        openPanna = r.openPanna;
-        openAnk = r.openAnk;
-      }
-
       if (resultType === 'open') {
         openPanna = panna;
         openAnk = ank;
-      } else {
+      } else { // 'close'
+        const existingData = resultDoc.exists ? resultDoc.data() as LotteryResult : {};
+        openPanna = existingData.openPanna;
+        openAnk = existingData.openAnk;
         closePanna = panna;
         closeAnk = ank;
       }
 
       const status: LotteryResult['status'] = resultType === 'open' ? 'open' : 'closed';
       const jodi = openAnk && closeAnk ? `${openAnk}${closeAnk}` : undefined;
-      const fullResult =
-        openPanna && openAnk && closePanna && closeAnk ? `${openPanna}-${jodi}-${closePanna}` : undefined;
+      
+      let fullResult: string | undefined = undefined;
+      if (openPanna && openAnk && closePanna && closeAnk && jodi) {
+        fullResult = `${openPanna}-${jodi}-${closePanna}`;
+      } else if (openPanna && openAnk) {
+        fullResult = `${openPanna}-${openAnk}`;
+      }
 
       const resultData: Partial<LotteryResult> = {
         lotteryName,
         drawDate: new Date().toISOString(),
-        openPanna: openPanna || '',
-        openAnk: openAnk || '',
-        closePanna: closePanna || '',
-        closeAnk: closeAnk || '',
-        jodi: jodi || '',
-        fullResult: fullResult || '',
+        openPanna: openPanna,
+        openAnk: openAnk,
+        closePanna: closePanna,
+        closeAnk: closeAnk,
+        jodi: jodi,
+        fullResult: fullResult,
         status,
         source: 'manual',
       };
@@ -641,11 +643,12 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
 
             // If an agent is calling for themselves, return a simplified view
             if (currentUser.role === 'agent') {
+                const totalBetsCount = userBetCounts ? Object.values(userBetCounts).reduce((acc, user) => acc + user.count, 0) : 0;
                 return {
                     success: true,
                     stats: {
                         totalUsers: usersSnap.size,
-                        totalBets: userBetCounts ? Object.values(userBetCounts).reduce((acc, user) => acc + user.count, 0) : 0,
+                        totalBets: totalBetsCount,
                         totalCommission: totalCommission,
                     }
                 };
@@ -700,6 +703,8 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                 if(agentDoc.exists) {
                     topAgentInfo = { name: (agentDoc.data() as UserProfile).customId, commission: topCommission };
                 }
+            } else {
+                 topAgentInfo = { name: 'N/A', commission: 0 };
             }
 
             return {
