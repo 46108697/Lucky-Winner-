@@ -170,6 +170,9 @@ const processWinners = async (
           paymentType: 'cash',
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
+      } else if (bet.betType === 'starline') {
+          // Starline bets are settled as soon as a result is out
+          transaction.update(betDoc.ref, { status: 'lost' });
       } else if (resultType === 'close') {
          // If it's the closing result and the bet didn't win, it's lost.
         transaction.update(betDoc.ref, { status: 'lost' });
