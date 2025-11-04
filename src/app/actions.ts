@@ -179,11 +179,8 @@ const processWinners = async (
           if (bet.numbers === winningPanna) isWinner = true;
           break;
         case 'half_sangam':
-           if (resultType === 'close' && openAnk && closeAnk) {
-                if (openPanna && bet.numbers === `${openPanna}${closeAnk}`) {
-                    isWinner = true;
-                }
-                if (closePanna && bet.numbers === `${openAnk}${closePanna}`) {
+           if (resultType === 'close' && openAnk && closeAnk && openPanna && closePanna) {
+                if (bet.numbers === `${openPanna}${closeAnk}` || bet.numbers === `${openAnk}${closePanna}`) {
                     isWinner = true;
                 }
            }
@@ -451,7 +448,7 @@ export async function placeBet(betDetails: {
         agentId: profile.agentId,
         lotteryName,
         betType,
-        betTime,
+        ...(betTime !== undefined && { betTime }),
         numbers,
         amount,
         createdAt: new Date().toISOString(),
@@ -841,7 +838,7 @@ export async function createUser(
   email: string,
   password?: string,
   mobile?: string,
-  agentUid?: string | 'no-agent'
+  agentUid?: string
 ): Promise<{ success: boolean; message: string }> {
   const currentUser = await getAuthorizedUser();
   if (!currentUser || !['admin', 'agent'].includes(currentUser.role))
