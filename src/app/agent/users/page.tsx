@@ -10,9 +10,16 @@ import { listAgentUsers, updateUserStatus, deleteUser, createUser } from '@/app/
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw, UserPlus } from 'lucide-react';
+import { IndianRupee, RefreshCw, UserPlus, MoreVertical, Trash2, KeyRound } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { cn } from '@/lib/utils';
 import { ManageWalletDialog, SetWalletLimitDialog } from '@/components/shared/UserActionsDialogs';
 import { CreateUserForm } from '@/components/shared/CreateUserForm';
@@ -157,33 +164,37 @@ export default function AgentUsersPage() {
                             {user.disabled ? 'Inactive' : 'Active'}
                             </Badge>
                         </TableCell>
-                        <TableCell className="text-right space-x-2">
-                            <ManageWalletDialog user={user} onUpdate={() => agent && fetchUsers(agent.uid)} />
-                            <SetWalletLimitDialog user={user} onUpdate={() => agent && fetchUsers(agent.uid)} />
-                            <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleStatusChange(user.uid, !user.disabled)}
-                            >
-                            {user.disabled ? 'Activate' : 'Deactivate'}
-                            </Button>
-                            <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm">Delete</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the user account.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(user.uid)}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                            </AlertDialog>
+                        <TableCell className="text-right">
+                           <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <ManageWalletDialog user={user} onUpdate={() => agent && fetchUsers(agent.uid)} />
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <SetWalletLimitDialog user={user} onUpdate={() => agent && fetchUsers(agent.uid)} />
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleStatusChange(user.uid, !user.disabled)}>
+                                         <KeyRound className="mr-2 h-4 w-4"/>{user.disabled ? 'Activate' : 'Deactivate'}
+                                    </DropdownMenuItem>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4"/>Delete
+                                            </div>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the user account.</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(user.uid)}>Continue</AlertDialogAction></AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </TableCell>
                         </TableRow>
                     ))

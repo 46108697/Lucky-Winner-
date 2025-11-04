@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -18,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { updateWalletBalance, updateWalletLimit } from '@/app/actions';
 import type { UserProfile } from '@/lib/types';
+import { Wallet, VenetianMask } from 'lucide-react';
 
 export function ManageWalletDialog({ user, onUpdate }: { user: UserProfile; onUpdate: () => void }) {
   const [amount, setAmount] = useState<number>(0);
@@ -50,7 +52,7 @@ export function ManageWalletDialog({ user, onUpdate }: { user: UserProfile; onUp
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Manage Wallet</Button>
+        <div className="flex items-center w-full"><Wallet className="mr-2 h-4 w-4"/>Manage Wallet</div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -152,7 +154,7 @@ export function SetWalletLimitDialog({ user, onUpdate }: { user: UserProfile; on
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">Set Limit</Button>
+        <div className="flex items-center w-full"><VenetianMask className="mr-2 h-4 w-4"/>Set Limit</div>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
