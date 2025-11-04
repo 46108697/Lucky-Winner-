@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase/client';
 import { Gem, Loader2, Home } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
@@ -31,14 +31,31 @@ export default function UnifiedLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // ✅ Handle Google redirect result
   useEffect(() => {
     const handleRedirect = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
+          const userDocRef = doc(db, 'users', result.user.uid);
+          const userDoc = await getDoc(userDocRef);
+
           toast({ title: "Google login successful!" });
-          router.push("/"); // default redirect, you can modify
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as UserProfile;
+             switch (userData.role) {
+                case 'admin':
+                  router.push('/admin'); break;
+                case 'agent':
+                  router.push('/agent'); break;
+                case 'user':
+                default:
+                  router.push('/'); break;
+              }
+          } else {
+            // New user, default redirect
+            router.push('/');
+          }
         }
       } catch (err) {
         console.error("Google Redirect Error:", err);
