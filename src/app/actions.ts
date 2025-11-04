@@ -142,7 +142,7 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && type !== 'starline' && type !== 'jodi') {
+    if (time && type !== 'starline' && type !== 'jodi' && type !== 'half_sangam' && type !== 'full_sangam') {
        q = q.where('betTime', '==', time);
     }
     
@@ -217,9 +217,13 @@ const processWinners = async (
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
 
-      } else if (resultType === 'close' && (!time || time === 'close')) {
-        transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (resultType === 'open' && time === 'open') {
+      } else if (resultType === 'close') {
+          // If it's the closing result and the bet didn't win, it's lost.
+          // This handles jodi, sangam, and any 'close' time bets.
+          transaction.update(betDoc.ref, { status: 'lost' });
+      } else if (resultType === 'open' && bet.betTime === 'open') {
+         // If it's the opening result, only 'open' time bets are settled as lost.
+         // 'close' time bets remain 'placed'.
          transaction.update(betDoc.ref, { status: 'lost' });
       }
     }
@@ -476,12 +480,12 @@ export async function declareResultManually(
   resultType: 'open' | 'close',
   panna: string
 ): Promise<{ success: boolean; message: string }> {
+  if (!lotteryName) return { success: false, message: 'Select a lottery.' };
+  if (!/^\d{3}$/.test(panna)) return { success: false, message: 'Panna must be 3 digits.' };
+
+  const ank = sumDigitsMod10(panna);
+
   try {
-    if (!lotteryName) return { success: false, message: 'Select a lottery.' };
-    if (!/^\d{3}$/.test(panna)) return { success: false, message: 'Panna must be 3 digits.' };
-
-    const ank = sumDigitsMod10(panna);
-
     await adminDb.runTransaction(async (transaction) => {
       const resultRef = adminDb.collection('results').doc(lotteryName);
       const resultDoc = await transaction.get(resultRef);

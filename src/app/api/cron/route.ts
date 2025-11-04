@@ -69,8 +69,7 @@ const processWinners = async (
 ) => {
   const { rates } = await getGameSettings();
 
-  // Prepare filters by resultType
-  const checks: { type: BetType; time?: BetTime }[] = [
+  const betChecks: { type: BetType; time?: BetTime }[] = [
     { type: 'single_ank', time: resultType },
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
@@ -78,21 +77,21 @@ const processWinners = async (
   ];
   
   if (lotteryName.toLowerCase().includes('starline')) {
-    checks.push({ type: 'starline' });
+    betChecks.push({ type: 'starline' });
   }
 
   if (resultType === 'close') {
-    checks.push({ type: 'jodi' }, { type: 'half_sangam' }, { type: 'full_sangam' });
+    betChecks.push({ type: 'jodi' }, { type: 'half_sangam' }, { type: 'full_sangam' });
   }
 
-  for (const { type, time } of checks) {
+  for (const { type, time } of betChecks) {
     let q = adminDb
       .collection('bets')
       .where('lotteryName', '==', lotteryName)
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time) q = q.where('betTime', '==', time);
+    if (time && type !== 'starline' && type !== 'jodi' && type !== 'half_sangam' && type !== 'full_sangam') q = q.where('betTime', '==', time);
 
     const snap = await transaction.get(q);
 
@@ -170,11 +169,11 @@ const processWinners = async (
           paymentType: 'cash',
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
-      } else if (resultType === 'close' && (!time || time === 'close')) {
-        // At close declaration, remaining close bets (and jodi/sangam) are settled as lost
+      } else if (resultType === 'close') {
+         // If it's the closing result and the bet didn't win, it's lost.
         transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (resultType === 'open' && time === 'open') {
-         // Mark open bets as lost if they didn't win
+      } else if (resultType === 'open' && bet.betTime === 'open') {
+         // If it's the opening result, only 'open' time bets are settled as lost.
          transaction.update(betDoc.ref, { status: 'lost' });
       }
     }
@@ -411,16 +410,6 @@ export async function GET(request: Request) {
                             closePanna,
                         });
                         
-                        const remainingBetsQuery = adminDb.collection('bets').where('lotteryName', '==', lottery.name).where('status', '==', 'placed');
-                        const remainingBetsSnap = await transaction.get(remainingBetsQuery);
-                        remainingBetsSnap.forEach(betDoc => {
-                            const bet = betDoc.data();
-                            // Only mark as lost if it's not a winning starline bet that was just processed
-                            if (bet.status === 'placed') {
-                                transaction.update(betDoc.ref, { status: 'lost' });
-                            }
-                        });
-
                         await processCommissions(transaction, lottery.name);
 
                         transaction.set(resultLockRef, { closeDeclared: true, manualOverride: false }, { merge: true });
