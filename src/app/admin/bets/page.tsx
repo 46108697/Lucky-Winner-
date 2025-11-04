@@ -31,6 +31,11 @@ function ManualBetForm({
     const [numbers, setNumbers] = useState('');
     const [amount, setAmount] = useState('');
     const [betTime, setBetTime] = useState<BetTime>('open');
+    const [sangamType, setSangamType] = useState('open-panna-close-ank');
+    const [openAnk, setOpenAnk] = useState('');
+    const [closeAnk, setCloseAnk] = useState('');
+    const [openPanna, setOpenPanna] = useState('');
+    const [closePanna, setClosePanna] = useState('');
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -41,8 +46,8 @@ function ManualBetForm({
         double_panna: { maxLength: 3, placeholder: 'e.g., 112', label: 'Double Panna' },
         triple_panna: { maxLength: 3, placeholder: 'e.g., 555', label: 'Triple Panna' },
         starline: { maxLength: 1, placeholder: 'e.g., 5', label: 'Starline (0-9)' },
-        half_sangam: { maxLength: 4, placeholder: 'Open Panna + Close Ank', label: 'Half Sangam' },
-        full_sangam: { maxLength: 6, placeholder: 'Open Panna + Close Panna', label: 'Full Sangam' },
+        half_sangam: { maxLength: 4, placeholder: '', label: 'Half Sangam' },
+        full_sangam: { maxLength: 6, placeholder: '', label: 'Full Sangam' },
     };
 
     const currentRule = rules[betType];
@@ -58,8 +63,16 @@ function ManualBetForm({
             setLoading(false);
             return;
         }
+        
+        let finalNumbers = numbers;
+        if (betType === 'half_sangam') {
+            finalNumbers = sangamType === 'open-panna-close-ank' ? `${openPanna}${closeAnk}` : `${openAnk}${closePanna}`;
+        }
+        if (betType === 'full_sangam') {
+            finalNumbers = `${openPanna}${closePanna}`;
+        }
 
-        if (numbers.length !== currentRule.maxLength) {
+        if (finalNumbers.length !== currentRule.maxLength) {
             toast({ title: 'Invalid Numbers', variant: 'destructive', description: `Expected ${currentRule.maxLength} digits for ${currentRule.label}.` });
             setLoading(false);
             return;
@@ -77,7 +90,7 @@ function ManualBetForm({
             userId: selectedUser.uid,
             lotteryName: lottery.name,
             betType: betType,
-            numbers: numbers,
+            numbers: finalNumbers,
             amount: betAmount,
             betTime: showBetTimeSelector ? betTime : undefined,
         });
@@ -86,6 +99,10 @@ function ManualBetForm({
             toast({ title: 'Bet Placed Successfully!', description: `₹${betAmount} bet for ${selectedUser.email} on ${lottery.name}.` });
             setNumbers('');
             setAmount('');
+            setOpenAnk('');
+            setCloseAnk('');
+            setOpenPanna('');
+            setClosePanna('');
             onBetPlaced();
         } else {
             toast({ title: 'Bet Failed', description: result.message, variant: 'destructive' });
@@ -93,6 +110,68 @@ function ManualBetForm({
 
         setLoading(false);
     };
+
+    if (betType === 'half_sangam') {
+        return (
+         <form onSubmit={handleSubmit} className="space-y-4 p-4 border-t">
+            <h3 className="font-semibold text-lg">{currentRule.label}</h3>
+           <RadioGroup value={sangamType} onValueChange={setSangamType} className="flex gap-4">
+               <div className="flex items-center space-x-2"><RadioGroupItem value="open-panna-close-ank" /><Label>Open Panna + Close Ank</Label></div>
+               <div className="flex items-center space-x-2"><RadioGroupItem value="open-ank-close-panna" /><Label>Open Ank + Close Panna</Label></div>
+           </RadioGroup>
+   
+           {sangamType === 'open-panna-close-ank' ? (
+               <div className="grid grid-cols-2 gap-4">
+                   <div><Label>Open Panna (3)</Label><Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} /></div>
+                   <div><Label>Close Ank (1)</Label><Input value={closeAnk} onChange={e => setCloseAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} /></div>
+               </div>
+           ) : (
+                <div className="grid grid-cols-2 gap-4">
+                   <div><Label>Open Ank (1)</Label><Input value={openAnk} onChange={e => setOpenAnk(e.target.value.replace(/[^0-9]/g, '').slice(0,1))} /></div>
+                   <div><Label>Close Panna (3)</Label><Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} /></div>
+               </div>
+           )}
+            <div className="space-y-2">
+                <Label htmlFor="amount-half-sangam">Amount</Label>
+                <div className="relative">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input id="amount-half-sangam" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Bet Amount" className="pl-8" />
+                </div>
+            </div>
+           <Button type="submit" disabled={loading} className="w-full">
+             {loading ? <Loader2 className="animate-spin" /> : `Place Bet for ${selectedUser.name}`}
+           </Button>
+         </form>
+        )
+    }
+
+    if (betType === 'full_sangam') {
+        return (
+            <form onSubmit={handleSubmit} className="space-y-4 p-4 border-t">
+                <h3 className="font-semibold text-lg">{currentRule.label}</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <Label>Open Panna (3)</Label>
+                        <Input value={openPanna} onChange={e => setOpenPanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} />
+                    </div>
+                    <div>
+                        <Label>Close Panna (3)</Label>
+                        <Input value={closePanna} onChange={e => setClosePanna(e.target.value.replace(/[^0-9]/g, '').slice(0,3))} />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="amount-full-sangam">Amount</Label>
+                    <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input id="amount-full-sangam" type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Bet Amount" className="pl-8" />
+                    </div>
+                </div>
+                <Button type="submit" disabled={loading} className="w-full">
+                    {loading ? <Loader2 className="animate-spin" /> : `Place Bet for ${selectedUser.name}`}
+                </Button>
+            </form>
+        );
+    }
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 p-4 border-t">
