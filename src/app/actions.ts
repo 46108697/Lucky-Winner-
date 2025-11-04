@@ -345,7 +345,7 @@ export async function handleSignIn(
 /** Place a bet */
 export async function placeBet(betDetails: {
   authToken: string;
-  userId?: string; // Optional: For admin to specify user
+  userId?: string; // Optional: For admin/agent to specify user
   lotteryName: string;
   betType: BetType;
   numbers: string;
@@ -375,18 +375,17 @@ export async function placeBet(betDetails: {
       message: `Invalid numbers length for ${betType}. Expected ${rules[betType]} digits.`,
     };
 
-  const adminUser = await getAuthorizedUser(authToken);
-  if (!adminUser) return { success: false, message: 'Unauthorized.' };
+  const requestingUser = await getAuthorizedUser(authToken);
+  if (!requestingUser) return { success: false, message: 'Unauthorized.' };
   
-  let targetUserId = adminUser.uid;
+  let targetUserId = requestingUser.uid;
+  let placingForOther = false;
 
-  // If admin is placing a bet for another user
-  if (userId && adminUser.role === 'admin') {
+  // If a specific user ID is provided, it means an admin or agent is placing for someone else.
+  if (userId) {
       targetUserId = userId;
-  } else if (userId && adminUser.uid !== userId) {
-      return { success: false, message: 'You can only place bets for yourself.' };
+      placingForOther = true;
   }
-
 
   const userRef = adminDb.collection('users').doc(targetUserId);
   const lotteryRef = adminDb.collection('lotteries').doc(lotteryName);
@@ -403,6 +402,18 @@ export async function placeBet(betDetails: {
 
       const profile = userDoc.data() as UserProfile;
       const lottery = lotteryDoc.data() as Lottery;
+
+      // Permission Check: If placing for another user, verify permissions
+      if (placingForOther) {
+          if (requestingUser.role === 'user') {
+              return { success: false, message: 'You cannot place bets for other users.' };
+          }
+          if (requestingUser.role === 'agent' && profile.agentId !== requestingUser.uid) {
+              return { success: false, message: 'You can only place bets for users assigned to you.' };
+          }
+          // Admin has all permissions, no extra check needed.
+      }
+
 
       // account checks
       if (profile.disabled) return { success: false, message: 'User account is disabled.' };
