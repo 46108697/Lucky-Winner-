@@ -802,7 +802,7 @@ export async function deleteUser(uid: string): Promise<{ success: boolean; messa
     await adminDb.collection('users').doc(uid).delete();
     await adminAuth.deleteUser(uid);
     return { success: true, message: 'User deleted successfully.' };
-  } catch (err: any) => {
+  } catch (err: any) {
     return { success: false, message: err.message || 'Failed to delete user.' };
   }
 }
@@ -1473,4 +1473,5 @@ export async function updateAgentCommission(
     
 
     
+
 
