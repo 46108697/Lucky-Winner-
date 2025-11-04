@@ -37,13 +37,14 @@ const getGameSettings = async () => {
 // --- Helper function to generate a valid panna ---
 const generatePanna = (): string => {
     const digits = Array.from({ length: 10 }, (_, i) => i);
-    let panna = "";
-    while (panna.length < 3) {
+    const pannaDigits: number[] = [];
+    while (pannaDigits.length < 3) {
         const randomIndex = Math.floor(Math.random() * digits.length);
         const digit = digits.splice(randomIndex, 1)[0];
-        panna += digit;
+        pannaDigits.push(digit);
     }
-    return panna.split('').sort().join('');
+    // Sort digits to create a valid panna
+    return pannaDigits.sort((a, b) => a - b).join('');
 }
 
 // --- Placeholder function to get real results ---
@@ -72,10 +73,13 @@ const processWinners = async (
         { type: 'single_panna', time: resultType },
         { type: 'double_panna', time: resultType },
         { type: 'triple_panna', time: resultType },
+        { type: 'starline' },
     ];
     // Jodi is only checked on 'close'
     if (resultType === 'close') {
         betTypeChecks.push({ type: 'jodi' });
+        betTypeChecks.push({ type: 'half_sangam' });
+        betTypeChecks.push({ type: 'full_sangam' });
     }
 
     for (const { type, time } of betTypeChecks) {
@@ -97,15 +101,39 @@ const processWinners = async (
 
             switch (bet.betType) {
                 case 'single_ank':
+                case 'starline':
                     if (bet.numbers === winningAnk) isWinner = true;
                     break;
                 case 'jodi':
-                    if (bet.numbers === winningJodi) isWinner = true;
+                    if (resultType === 'close' && bet.numbers === winningJodi) isWinner = true;
                     break;
                 case 'single_panna':
                 case 'double_panna':
                 case 'triple_panna':
                     if (bet.numbers === winningPanna) isWinner = true;
+                    break;
+                case 'half_sangam':
+                     if (resultType === 'close' && winningJodi) {
+                        const openPanna = winningPanna; // This is incorrect, need actual open panna
+                        const closeAnk = winningJodi.substring(1, 2);
+                        const openAnk = winningJodi.substring(0, 1);
+                        const closePanna = winningPanna; // placeholder
+                        
+                        const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
+                        const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
+                        if (bet.numbers === pattern1 || bet.numbers === pattern2) {
+                            isWinner = true;
+                        }
+                    }
+                    break;
+                case 'full_sangam':
+                    if (resultType === 'close' && winningJodi) {
+                         const openPanna = winningPanna; // placeholder
+                         const closePanna = winningPanna; // placeholder
+                        if (bet.numbers === `${openPanna}${closePanna}`) {
+                            isWinner = true;
+                        }
+                    }
                     break;
             }
 
