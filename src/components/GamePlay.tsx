@@ -63,7 +63,7 @@ function BetForm({
     full_sangam: { maxLength: 6, placeholder: '', label: 'Full Sangam' }
   }[betType] ?? { maxLength: 10, placeholder: 'Enter numbers', label: 'Numbers' };
 
-  const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && gameName !== 'Starline' && betType !== 'jodi';
+  const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && !gameName.toLowerCase().includes('starline') && betType !== 'jodi';
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -242,7 +242,7 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
   }, [gameName]);
 
   useEffect(() => {
-    if (!gameDetails || gameDetails.name.toLowerCase() === 'starline') {
+    if (!gameDetails || gameDetails.name.toLowerCase().includes('starline')) {
         setMarketOpen({ isOpen: true, message: 'Market is open 24/7' });
         setMarketClose({ isOpen: true, message: '' });
         return;
@@ -274,7 +274,7 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
 
   const back = () => window.history.length > 1 ? router.back() : router.push('/');
 
-  if (gameName.toLowerCase() === "starline") {
+  if (gameName.toLowerCase().includes("starline")) {
     return (
         <div className="space-y-6">
             <Button variant="outline" size="icon" onClick={back}><ArrowLeft /></Button>
@@ -348,3 +348,5 @@ export function GamePlay({ gameName, user }: GamePlayProps) {
     </div>
   );
 }
+
+    

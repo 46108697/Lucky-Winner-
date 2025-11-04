@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -51,7 +52,7 @@ function ManualBetForm({
     };
 
     const currentRule = rules[betType];
-    const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && lottery.name !== 'Starline' && betType !== 'jodi';
+    const showBetTimeSelector = (betType.includes('ank') || betType.includes('panna')) && !lottery.name.toLowerCase().includes('starline') && betType !== 'jodi';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -324,3 +325,5 @@ export default function AdminBetsPage() {
         </div>
     );
 }
+
+    
