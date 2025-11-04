@@ -511,7 +511,7 @@ export async function declareResultManually(
         openPanna = panna;
         openAnk = ank;
       } else { // 'close'
-        if (!existingData.openPanna || !existingData.openAnk) {
+        if (!resultDoc.exists || !existingData.openPanna || !existingData.openAnk) {
           throw new Error('Cannot declare close result before open result is declared.');
         }
         openPanna = existingData.openPanna;
