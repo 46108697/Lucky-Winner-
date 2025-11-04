@@ -173,7 +173,7 @@ const processWinners = async (
         }
         case 'half_sangam': {
           // Valid at close: either openPanna + closeAnk OR openAnk + closePanna (one digit)
-          if (resultType === 'close' && openPanna && closeAnk && openAnk) {
+          if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
              const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
              const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
             if (bet.numbers === pattern1 || bet.numbers === pattern2) {
@@ -463,7 +463,7 @@ export async function placeBet(betDetails: {
       } as Omit<Transaction, 'id'>);
       
       if(placingForOther) {
-          console.log(`Admin (${adminUser.email}) placed a bet of ${amount} for user ${profile.email} in ${lotteryName}`);
+          // Intentionally removed console.log
       }
 
       return { success: true, message: 'Bet placed successfully!' };
@@ -1469,4 +1469,3 @@ export async function updateAgentCommission(
     
 
     
-
