@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -66,20 +67,7 @@ function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgen
 
   const handleUpdateAgent = async () => {
     setLoading(true);
-    // The updateUserAgent action expects the custom ID, let's find it.
-    // Or even better, let's modify the action to accept UID.
-    // Let's stick to the user's primary request: fix the component logic.
-    // The action expects customId, so we find the agent with the selected UID and pass their customId.
-    const selectedAgent = agents.find(a => a.uid === newAgentId);
-    const agentCustomIdToUpdate = newAgentId === 'no-agent' ? 'no-agent' : selectedAgent?.customId;
-    
-    if (!agentCustomIdToUpdate) {
-        toast({ title: 'Error', description: 'Could not find the selected agent.', variant: 'destructive' });
-        setLoading(false);
-        return;
-    }
-
-    const result = await updateUserAgent(user.uid, agentCustomIdToUpdate);
+    const result = await updateUserAgent(user.uid, newAgentId);
 
     if (result.success) {
       toast({ title: 'Success', description: result.message });

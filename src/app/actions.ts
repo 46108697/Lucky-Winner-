@@ -1047,17 +1047,17 @@ export async function processWithdrawalRequest(
   }
 }
 
-/** Update user's agent (using agent customId; pass 'no-agent' to clear) */
+/** Update user's agent (using agent UID; pass 'no-agent' to clear) */
 export async function updateUserAgent(
   uid: string,
-  agentCustomId: string | 'no-agent'
+  agentUid: string | 'no-agent'
 ): Promise<{ success: boolean; message: string }> {
   const currentUser = await getAuthorizedUser();
   if (!currentUser || currentUser.role !== 'admin')
     return { success: false, message: 'Unauthorized.' };
 
   try {
-    if (agentCustomId === 'no-agent') {
+    if (agentUid === 'no-agent') {
       await adminDb.collection('users').doc(uid).update({
         agentId: FieldValue.delete(),
         agentCustomId: FieldValue.delete(),
@@ -1065,19 +1065,16 @@ export async function updateUserAgent(
       return { success: true, message: 'Agent removed from user.' };
     }
 
-    const agentSnap = await adminDb
-      .collection('users')
-      .where('customId', '==', agentCustomId)
-      .where('role', '==', 'agent')
-      .limit(1)
-      .get();
+    const agentDoc = await adminDb.collection('users').doc(agentUid).get();
 
-    if (agentSnap.empty) return { success: false, message: 'Agent not found.' };
+    if (!agentDoc.exists || agentDoc.data()?.role !== 'agent') {
+      return { success: false, message: 'Agent not found.' };
+    }
 
-    const agentDoc = agentSnap.docs[0];
+    const agentData = agentDoc.data() as UserProfile;
     await adminDb.collection('users').doc(uid).update({
       agentId: agentDoc.id,
-      agentCustomId,
+      agentCustomId: agentData.customId,
     });
 
     return { success: true, message: 'Agent assigned successfully.' };
@@ -1468,3 +1465,4 @@ export async function updateAgentCommission(
     
 
     
+
