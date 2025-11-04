@@ -124,11 +124,11 @@ const processWinners = async (
           break;
         }
         case 'half_sangam':
-           if (resultType === 'close' && openAnk && openPanna && closeAnk && closePanna) {
+           if (resultType === 'close') {
               // Open Panna + Close Ank OR Open Ank + Close Panna
-              if (bet.numbers === `${openPanna}${closeAnk}`) {
+              if (openPanna && closeAnk && bet.numbers === `${openPanna}${closeAnk}`) {
                   isWinner = true;
-              } else if (bet.numbers === `${openAnk}${closePanna}`) {
+              } else if (openAnk && closePanna && bet.numbers === `${openAnk}${closePanna}`) {
                   isWinner = true;
               }
            }
@@ -432,5 +432,7 @@ export async function GET(request: Request) {
         });
     }
 }
+
+    
 
     
