@@ -141,10 +141,10 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && !lotteryName.toLowerCase().includes('starline')) {
-      q = q.where('betTime', '==', time);
+    if (time && type !== 'starline') {
+       q = q.where('betTime', '==', time);
     }
-
+    
     const snap = await transaction.get(q);
 
     for (const betDoc of snap.docs) {
@@ -521,6 +521,10 @@ export async function declareResultManually(
       };
       
       transaction.set(resultRef, resultData, { merge: true });
+
+      // Also log to historical results
+      const historicalResultRef = adminDb.collection('historical_results').doc();
+      transaction.set(historicalResultRef, { ...resultData, drawDate: new Date().toISOString() });
 
       await processWinners(transaction, lotteryName, resultType, ank, panna, {
         openAnk,
