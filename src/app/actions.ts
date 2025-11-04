@@ -794,17 +794,39 @@ export async function updateUserStatus(
 
 /** Delete user */
 export async function deleteUser(uid: string): Promise<{ success: boolean; message: string }> {
-  const currentUser = await getAuthorizedUser();
-  if (!currentUser || !['admin', 'agent'].includes(currentUser.role))
-    return { success: false, message: 'Unauthorized.' };
+    const currentUser = await getAuthorizedUser();
+    if (!currentUser || !['admin', 'agent'].includes(currentUser.role)) {
+        return { success: false, message: 'Unauthorized.' };
+    }
 
-  try {
-    await adminDb.collection('users').doc(uid).delete();
-    await adminAuth.deleteUser(uid);
-    return { success: true, message: 'User deleted successfully.' };
-  } catch (err: any) {
-    return { success: false, message: err.message || 'Failed to delete user.' };
-  }
+    try {
+        const userDoc = await adminDb.collection('users').doc(uid).get();
+        if (!userDoc.exists) {
+            return { success: false, message: 'User not found.' };
+        }
+        const user = userDoc.data() as UserProfile;
+
+        // If deleting an agent, un-assign their users
+        if (user.role === 'agent') {
+            const usersSnap = await adminDb.collection('users').where('agentId', '==', uid).get();
+            const batch = adminDb.batch();
+            usersSnap.forEach(doc => {
+                const userRef = adminDb.collection('users').doc(doc.id);
+                batch.update(userRef, {
+                    agentId: FieldValue.delete(),
+                    agentCustomId: FieldValue.delete()
+                });
+            });
+            await batch.commit();
+        }
+
+        await adminDb.collection('users').doc(uid).delete();
+        await adminAuth.deleteUser(uid);
+        
+        return { success: true, message: 'User deleted successfully.' };
+    } catch (err: any) {
+        return { success: false, message: err.message || 'Failed to delete user.' };
+    }
 }
 
 /** Create user (admin) */
@@ -1473,5 +1495,6 @@ export async function updateAgentCommission(
     
 
     
+
 
 
