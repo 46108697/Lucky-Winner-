@@ -10,7 +10,7 @@ import { listUsers, updateUserStatus, deleteUser, createUser, updateUserAgent } 
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw, UserPlus, Search, Eye, MoreVertical } from 'lucide-react';
+import { IndianRupee, RefreshCw, UserPlus, Search, Eye, MoreVertical, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -309,9 +309,26 @@ export default function UsersPage() {
                                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}><SetWalletLimitDialog user={user} onUpdate={fetchUsersAndAgents} /></DropdownMenuItem>
                                         <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ChangeAgentDialog user={user} onAgentChanged={fetchUsersAndAgents} /></DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => handleStatusChange(user.uid, !user.disabled)}>{user.disabled ? 'Activate' : 'Deactivate'}</DropdownMenuItem>
-                                        <DropdownMenuItem className="text-destructive" onClick={() => {
-                                            // Trigger alert dialog here, requires refactoring to manage dialog state
-                                        }}>Delete</DropdownMenuItem>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                                     <Trash2 className="mr-2 h-4 w-4" />
+                                                     Delete
+                                                </div>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This action cannot be undone. This will permanently delete the user account.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => handleDelete(user.uid)}>Continue</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                            </div>
