@@ -10,7 +10,7 @@ import { listUsers, updateUserStatus, deleteUser, createUser, updateUserAgent } 
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw, UserPlus, Search, Eye, MoreVertical, Trash2, Edit, KeyRound } from 'lucide-react';
+import { IndianRupee, RefreshCw, UserPlus, Search, Eye, MoreVertical, Trash2, Edit, KeyRound, Users } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -356,5 +356,7 @@ export default function UsersPage() {
     </div>
   );
 }
+
+    
 
     
