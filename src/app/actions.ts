@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { headers } from 'next/headers';
@@ -119,129 +118,109 @@ const processWinners = async (
   openClosePair?: { openAnk?: string; closeAnk?: string; openPanna?: string; closePanna?: string }
 ) => {
   const { rates } = await getGameSettings();
+  const userUpdates: { [userId: string]: { wallet: number, cash: number } } = {};
 
-  // --- Handle Starline Games Separately ---
+  const processBet = (bet: Bet) => {
+    const payout = bet.amount * (rates[bet.betType] || 0);
+    transaction.update(adminDb.collection('bets').doc(bet.id), { status: 'won', payout });
+
+    if (!userUpdates[bet.userId]) {
+      userUpdates[bet.userId] = { wallet: 0, cash: 0 };
+    }
+    userUpdates[bet.userId].wallet += payout;
+    userUpdates[bet.userId].cash += payout;
+
+    const txRef = adminDb.collection('transactions').doc();
+    transaction.set(txRef, {
+      fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
+      amount: payout, type: 'win', paymentType: 'cash',
+      timestamp: new Date().toISOString(),
+    } as Omit<Transaction, 'id'>);
+  };
+  
+  const loseBet = (bet: Bet) => {
+      transaction.update(adminDb.collection('bets').doc(bet.id), { status: 'lost' });
+  };
+
+  // --- Handle Starline Separately ---
   if (lotteryName.toLowerCase().includes('starline')) {
-    const starlineBetsQuery = adminDb.collection('bets')
-      .where('lotteryName', '==', lotteryName)
-      .where('status', '==', 'placed')
-      .where('betType', '==', 'starline');
-    
+    const starlineBetsQuery = adminDb.collection('bets').where('lotteryName', '==', lotteryName).where('status', '==', 'placed');
     const snap = await transaction.get(starlineBetsQuery);
+    for (const betDoc of snap.docs) {
+      const bet = { id: betDoc.id, ...betDoc.data() } as Bet;
+      if (bet.betType === 'starline' && bet.numbers === winningAnk) {
+        processBet(bet);
+      } else {
+        loseBet(bet);
+      }
+    }
+  } else {
+    // --- Regular Open/Close Games ---
+    const allBetsQuery = adminDb.collection('bets').where('lotteryName', '==', lotteryName).where('status', '==', 'placed');
+    const snap = await transaction.get(allBetsQuery);
 
     for (const betDoc of snap.docs) {
-      const bet = betDoc.data() as Bet;
-      if (bet.numbers === winningAnk) {
-        const payout = bet.amount * (rates.starline || 0);
-        transaction.update(betDoc.ref, { status: 'won', payout });
+        const bet = { id: betDoc.id, ...betDoc.data() } as Bet;
         
-        const userRef = adminDb.collection('users').doc(bet.userId);
-        transaction.update(userRef, {
-          walletBalance: FieldValue.increment(payout),
-        });
-
-        const txRef = adminDb.collection('transactions').doc();
-        transaction.set(txRef, {
-          fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
-          amount: payout, type: 'win', paymentType: 'cash',
-          timestamp: new Date().toISOString(),
-        } as Omit<Transaction, 'id'>);
-      } else {
-        transaction.update(betDoc.ref, { status: 'lost' });
-      }
-    }
-    return; // Starline processing ends here.
-  }
-
-  // --- Handle Regular Open/Close Games ---
-  const betTypesForTime: BetType[] = ['single_ank', 'single_panna', 'double_panna', 'triple_panna'];
-
-  for (const type of betTypesForTime) {
-    const q = adminDb.collection('bets')
-      .where('lotteryName', '==', lotteryName)
-      .where('status', '==', 'placed')
-      .where('betType', '==', type)
-      .where('betTime', '==', resultType);
-    
-    const snap = await transaction.get(q);
-
-    for (const betDoc of snap.docs) {
-      const bet = betDoc.data() as Bet;
-      let isWinner = false;
-      
-      if (type === 'single_ank' && bet.numbers === winningAnk) isWinner = true;
-      if (type.includes('panna') && bet.numbers === winningPanna) isWinner = true;
-
-      if (isWinner) {
-        const payout = bet.amount * (rates[type] || 0);
-        transaction.update(betDoc.ref, { status: 'won', payout });
-        
-        const userRef = adminDb.collection('users').doc(bet.userId);
-        transaction.update(userRef, {
-          walletBalance: FieldValue.increment(payout),
-        });
-
-        const txRef = adminDb.collection('transactions').doc();
-        transaction.set(txRef, {
-          fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
-          amount: payout, type: 'win', paymentType: 'cash',
-          timestamp: new Date().toISOString(),
-        } as Omit<Transaction, 'id'>);
-      } else {
-        transaction.update(betDoc.ref, { status: 'lost' });
-      }
+        switch (bet.betType) {
+            // Settled on Open OR Close result
+            case 'single_ank':
+            case 'single_panna':
+            case 'double_panna':
+            case 'triple_panna':
+                if (bet.betTime === resultType) {
+                    const isWinner = (bet.betType === 'single_ank' && bet.numbers === winningAnk) || (bet.betType.includes('panna') && bet.numbers === winningPanna);
+                    if (isWinner) processBet(bet);
+                    else loseBet(bet);
+                }
+                break;
+            
+            // Settled only on Close result
+            case 'jodi':
+                if (resultType === 'close') {
+                    const { openAnk, closeAnk } = openClosePair || {};
+                    if (openAnk && closeAnk && bet.numbers === `${openAnk}${closeAnk}`) {
+                        processBet(bet);
+                    } else {
+                        loseBet(bet);
+                    }
+                }
+                break;
+            case 'half_sangam':
+                 if (resultType === 'close') {
+                    const { openAnk, closeAnk, openPanna, closePanna } = openClosePair || {};
+                    if (openAnk && closeAnk && openPanna && closePanna) {
+                        if (bet.numbers === `${openPanna}${closeAnk}` || bet.numbers === `${openAnk}${closePanna}`) {
+                            processBet(bet);
+                        } else {
+                            loseBet(bet);
+                        }
+                    } else {
+                       loseBet(bet);
+                    }
+                }
+                break;
+            case 'full_sangam':
+                if (resultType === 'close') {
+                    const { openPanna, closePanna } = openClosePair || {};
+                    if (openPanna && closePanna && bet.numbers === `${openPanna}${closePanna}`) {
+                        processBet(bet);
+                    } else {
+                        loseBet(bet);
+                    }
+                }
+                break;
+        }
     }
   }
-
-  // Bets settled only on CLOSE result (Jodi, Sangam)
-  if (resultType === 'close') {
-    const combinedBetTypes: BetType[] = ['jodi', 'half_sangam', 'full_sangam'];
-    const { openAnk, closeAnk, openPanna, closePanna } = openClosePair || {};
-
-    for (const type of combinedBetTypes) {
-      const q = adminDb.collection('bets')
-        .where('lotteryName', '==', lotteryName)
-        .where('status', '==', 'placed')
-        .where('betType', '==', type);
-
-      const snap = await transaction.get(q);
-
-      for (const betDoc of snap.docs) {
-        const bet = betDoc.data() as Bet;
-        let isWinner = false;
-
-        switch (type) {
-          case 'jodi':
-            if (openAnk && closeAnk && bet.numbers === `${openAnk}${closeAnk}`) isWinner = true;
-            break;
-          case 'half_sangam':
-            if (openAnk && closeAnk && openPanna && closePanna) {
-              if (bet.numbers === `${openPanna}${closeAnk}` || bet.numbers === `${openAnk}${closePanna}`) {
-                isWinner = true;
-              }
-            }
-            break;
-          case 'full_sangam':
-            if (openPanna && closePanna && bet.numbers === `${openPanna}${closePanna}`) {
-              isWinner = true;
-            }
-            break;
-        }
-
-        if (isWinner) {
-          const payout = bet.amount * (rates[type] || 0);
-          transaction.update(betDoc.ref, { status: 'won', payout });
-          const userRef = adminDb.collection('users').doc(bet.userId);
-          transaction.update(userRef, {
-            walletBalance: FieldValue.increment(payout),
-          });
-          const txRef = adminDb.collection('transactions').doc();
-          transaction.set(txRef, { fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail, amount: payout, type: 'win', paymentType: 'cash', timestamp: new Date().toISOString() } as Omit<Transaction, 'id'>);
-        } else {
-          transaction.update(betDoc.ref, { status: 'lost' });
-        }
-      }
-    }
+  
+  // Batch update user wallets
+  for (const userId in userUpdates) {
+    const userRef = adminDb.collection('users').doc(userId);
+    transaction.update(userRef, {
+      walletBalance: FieldValue.increment(userUpdates[userId].wallet),
+      cashBalance: FieldValue.increment(userUpdates[userId].cash),
+    });
   }
 };
 
@@ -413,10 +392,10 @@ export async function placeBet(betDetails: {
       ]);
 
       if (!userDoc.exists) return { success: false, message: 'User not found.' };
-      if (!lotteryDoc.exists) return { success: false, message: 'Game not found.' };
+      const lottery = (await listLotteryGames()).find(l => l.name === lotteryName);
+      if (!lottery) return { success: false, message: 'Game not found.' };
 
       const profile = userDoc.data() as UserProfile;
-      const lottery = lotteryDoc.data() as Lottery;
 
       // Permission Check: If placing for another user, verify permissions
       if (placingForOther) {
@@ -454,11 +433,14 @@ export async function placeBet(betDetails: {
       }
 
       // balance check
-      if (profile.walletBalance < amount)
+      if (profile.cashBalance < amount)
         return { success: false, message: 'Insufficient balance.' };
 
       // deduct
-      tx.update(userRef, { walletBalance: FieldValue.increment(-amount) });
+      tx.update(userRef, { 
+          walletBalance: FieldValue.increment(-amount),
+          cashBalance: FieldValue.increment(-amount),
+      });
 
       // write bet
       const betRef = adminDb.collection('bets').doc();
@@ -468,13 +450,16 @@ export async function placeBet(betDetails: {
         agentId: profile.agentId,
         lotteryName,
         betType,
-        ...(betTime !== undefined && { betTime }),
         numbers,
         amount,
         createdAt: new Date().toISOString(),
         status: 'placed',
         commissionProcessed: false,
       };
+      if (betTime) {
+        betData.betTime = betTime;
+      }
+
       tx.set(betRef, betData);
 
       // transaction record
@@ -644,6 +629,15 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             let totalBetsCount = 0;
             let totalCommission = 0;
             const userBetStats: Record<string, { email: string, name: string, count: number, amount: number }> = {};
+            
+            usersData.forEach(user => {
+                userBetStats[user.uid] = {
+                    email: user.email,
+                    name: user.name,
+                    count: 0,
+                    amount: 0,
+                };
+            });
 
             if (userIds.length > 0) {
                 // Firestore 'in' queries are limited to 30 elements. If an agent has more users, this needs chunking.
@@ -654,17 +648,10 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                     totalBetAmount += safeNumber(bet.amount);
                     totalBetsCount++;
 
-                    if (!userBetStats[bet.userId]) {
-                        const userProfile = usersData.find(u => u.uid === bet.userId);
-                        userBetStats[bet.userId] = { 
-                            email: bet.userEmail, 
-                            name: userProfile?.name || 'Unknown User', 
-                            count: 0, 
-                            amount: 0 
-                        };
+                    if (userBetStats[bet.userId]) {
+                        userBetStats[bet.userId].count++;
+                        userBetStats[bet.userId].amount += bet.amount;
                     }
-                    userBetStats[bet.userId].count++;
-                    userBetStats[bet.userId].amount += bet.amount;
                 });
             }
 
@@ -674,6 +661,7 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             });
             
             const activeUsersList = Object.values(userBetStats)
+                .filter(u => u.count > 0)
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 10);
 
@@ -723,10 +711,11 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
 
             const commSnap = await adminDb.collection('transactions').where('type', '==', 'commission').get();
             const agentCommissions: Record<string, number> = {};
+            
             agentsSnap.docs.forEach(doc => {
-              // Initialize all agents with 0 commission
               agentCommissions[doc.id] = 0;
             });
+            
             commSnap.forEach(doc => {
                 const tx = doc.data() as Transaction;
                 if(agentCommissions.hasOwnProperty(tx.toId)) {
@@ -743,6 +732,10 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                 if(agentDoc.exists) {
                     topAgentInfo = { name: (agentDoc.data() as UserProfile).customId, commission: topCommission };
                 }
+            } else if (agentsSnap.size > 0) {
+                // If no commissions earned yet, but agents exist, show the first agent.
+                const firstAgentDoc = agentsSnap.docs[0];
+                topAgentInfo = { name: (firstAgentDoc.data() as UserProfile).customId, commission: 0};
             }
 
 
@@ -1321,6 +1314,7 @@ export async function createAgent(name: string, email: string, mobile: string, p
             cashBalance: 0,
             creditBalance: 0,
             mobile: mobile,
+            commissionRate: 0.05, // Default commission
         };
 
         await adminDb.collection('users').doc(userRecord.uid).set(profile);
@@ -1545,5 +1539,3 @@ export async function updateAgentCommission(
         return { success: false, message: err.message || 'Failed to update commission rate.' };
     }
 }
-
-    
