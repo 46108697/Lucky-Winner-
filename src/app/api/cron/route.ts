@@ -335,8 +335,6 @@ export async function GET(request: Request) {
                         };
                         
                         transaction.set(resultDocRef, resultData, { merge: true });
-                        const historicalResultRef = adminDb.collection('historical_results').doc();
-                        transaction.set(historicalResultRef, { ...resultData, drawDate: new Date().toISOString() });
 
                         await processWinners(transaction, lottery.name, 'open', openAnk, openPanna, { openAnk, openPanna });
                         
@@ -434,3 +432,4 @@ export async function GET(request: Request) {
     
 
     
+
