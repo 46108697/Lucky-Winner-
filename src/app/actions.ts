@@ -181,7 +181,7 @@ const processWinners = async (
                 // Open Panna + Close Ank OR Open Ank + Close Panna
                 const openPanna_closeAnk = openPanna && closeAnk ? `${openPanna}${closeAnk}` : undefined;
                 const openAnk_closePanna = openAnk && closePanna ? `${openAnk}${closePanna}` : undefined;
-                if (bet.numbers === openPanna_closeAnk || bet.numbers === openAnk_closePanna) {
+                if ((openPanna_closeAnk && bet.numbers === openPanna_closeAnk) || (openAnk_closePanna && bet.numbers === openAnk_closePanna)) {
                     isWinner = true;
                 }
            }
@@ -382,7 +382,7 @@ export async function placeBet(betDetails: {
   let placingForOther = false;
 
   // If a specific user ID is provided, it means an admin or agent is placing for someone else.
-  if (userId) {
+  if (userId && userId !== requestingUser.uid) {
       targetUserId = userId;
       placingForOther = true;
   }
@@ -1512,6 +1512,8 @@ export async function updateAgentCommission(
     
 
       
+
+    
 
     
 

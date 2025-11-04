@@ -1,4 +1,5 @@
 
+
 import 'server-only';
 export const runtime = 'nodejs';
 
@@ -125,12 +126,12 @@ const processWinners = async (
         }
         case 'half_sangam':
            if (resultType === 'close') {
-              // Open Panna + Close Ank OR Open Ank + Close Panna
-              if (openPanna && closeAnk && bet.numbers === `${openPanna}${closeAnk}`) {
-                  isWinner = true;
-              } else if (openAnk && closePanna && bet.numbers === `${openAnk}${closePanna}`) {
-                  isWinner = true;
-              }
+                // Open Panna + Close Ank OR Open Ank + Close Panna
+                const openPanna_closeAnk = openPanna && closeAnk ? `${openPanna}${closeAnk}` : undefined;
+                const openAnk_closePanna = openAnk && closePanna ? `${openAnk}${closePanna}` : undefined;
+                if ((openPanna_closeAnk && bet.numbers === openPanna_closeAnk) || (openAnk_closePanna && bet.numbers === openAnk_closePanna)) {
+                    isWinner = true;
+                }
            }
           break;
         case 'full_sangam': {
@@ -432,6 +433,8 @@ export async function GET(request: Request) {
         });
     }
 }
+
+    
 
     
 
