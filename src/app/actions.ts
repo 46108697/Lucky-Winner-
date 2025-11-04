@@ -172,9 +172,11 @@ const processWinners = async (
           break;
         }
         case 'half_sangam': {
-          // Valid at close: either openPanna + closeAnk OR closePanna + openAnk
-          if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
-            if (bet.numbers === `${openPanna}${closeAnk}` || bet.numbers === `${closePanna}${openAnk}`) {
+          // Valid at close: either openPanna + closeAnk OR openAnk + closePanna (one digit)
+          if (resultType === 'close' && openPanna && closeAnk && openAnk) {
+             const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
+             const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
+            if (bet.numbers === pattern1 || bet.numbers === pattern2) {
               isWinner = true;
             }
           }
@@ -1467,3 +1469,4 @@ export async function updateAgentCommission(
     
 
     
+
