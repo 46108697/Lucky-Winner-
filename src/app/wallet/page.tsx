@@ -246,7 +246,8 @@ export default function UserWalletPage() {
                         setUserProfile(profile);
                     }
                 });
-                
+
+                // IIFE to call async function inside useEffect
                 (async () => {
                     await fetchData(user);
                 })();
@@ -423,3 +424,5 @@ export default function UserWalletPage() {
         </div>
     );
 }
+
+      

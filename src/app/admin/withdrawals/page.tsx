@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -32,7 +33,9 @@ export default function WithdrawalsPage() {
   const handleProcessRequest = async (requestId: string, action: 'approve' | 'reject') => {
     const result = await processWithdrawalRequest(requestId, action);
     toast({ title: result.success ? 'Success' : 'Error', description: result.message, variant: result.success ? 'default' : 'destructive' });
-    fetchRequests();
+    if (result.success) {
+      fetchRequests();
+    }
   };
 
   return (
@@ -88,7 +91,7 @@ export default function WithdrawalsPage() {
                     <TableCell className="font-mono text-[var(--neon-cyan)]">{req.userUpiId}</TableCell>
 
                     <TableCell className="hidden md:table-cell">
-                      <Badge className="neon-badge capitalize">
+                       <Badge className={cn("capitalize", req.status === 'pending' ? 'neon-badge' : req.status === 'approved' ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30')}>
                         {req.status}
                       </Badge>
                     </TableCell>
@@ -111,13 +114,13 @@ export default function WithdrawalsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Approve Withdrawal?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Approve ₹{req.amount.toFixed(2)} for {req.userName}. This action cannot be undone.
+                                  This action will deduct ₹{req.amount.toFixed(2)} from {req.userName}'s wallet and mark this request as approved. This cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleProcessRequest(req.id, 'approve')}>
-                                  Confirm
+                                  Confirm & Approve
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -131,13 +134,13 @@ export default function WithdrawalsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Reject Withdrawal?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Amount will be refunded back to wallet.
+                                  This will mark the request as rejected. The user's funds will NOT be affected.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleProcessRequest(req.id, 'reject')}>
-                                  Reject
+                                <AlertDialogAction onClick={() => handleProcessRequest(req.id, 'reject')} className="bg-destructive hover:bg-destructive/90">
+                                  Confirm Rejection
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -156,3 +159,5 @@ export default function WithdrawalsPage() {
     </div>
   );
 }
+
+      

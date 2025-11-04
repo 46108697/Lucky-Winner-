@@ -939,12 +939,6 @@ export async function createWithdrawalRequest(
     return { success: false, message: 'Withdrawal amount cannot exceed your cash balance.' };
   }
 
-  // Deduct from wallet immediately
-  await userRef.update({
-    walletBalance: FieldValue.increment(-amount),
-    cashBalance: FieldValue.increment(-amount),
-  });
-
   const request: Omit<WithdrawalRequest, 'id'> = {
     userId: user.uid,
     userEmail: user.email,
@@ -958,7 +952,7 @@ export async function createWithdrawalRequest(
 
   await adminDb.collection('withdrawals').add(request);
   
-  return { success: true, message: 'Withdrawal request submitted! Amount will be processed shortly.' };
+  return { success: true, message: 'Withdrawal request submitted! It will be processed shortly.' };
 }
 
 
@@ -1014,45 +1008,70 @@ export async function processWithdrawalRequest(
   requestId: string,
   action: 'approve' | 'reject'
 ): Promise<{ success: boolean; message: string }> {
+  const currentUser = await getAuthorizedUser();
+  if (!currentUser || !['admin', 'agent'].includes(currentUser.role)) {
+    return { success: false, message: 'Unauthorized.' };
+  }
+
+  const reqRef = adminDb.collection('withdrawals').doc(requestId);
+
   try {
-    const reqRef = adminDb.collection('withdrawals').doc(requestId);
-    const reqDoc = await reqRef.get();
-    if (!reqDoc.exists) {
-      return { success: false, message: 'Request not found.' };
-    }
+    return await adminDb.runTransaction(async (tx) => {
+      const reqDoc = await tx.get(reqRef);
+      if (!reqDoc.exists) throw new Error('Request not found.');
 
-    const req = reqDoc.data() as WithdrawalRequest;
-    const userRef = adminDb.collection('users').doc(req.userId);
+      const req = reqDoc.data() as WithdrawalRequest;
+      if (req.status !== 'pending') throw new Error(`Request is already ${req.status}.`);
+      
+      const userRef = adminDb.collection('users').doc(req.userId);
+      const userDoc = await tx.get(userRef);
+      if (!userDoc.exists) throw new Error('User account not found.');
 
-    if (action === 'approve') {
-      await reqRef.update({
-        status: 'approved',
-        processedAt: new Date().toISOString(),
-      });
+      if (action === 'approve') {
+        const userProfile = userDoc.data() as UserProfile;
+        if (req.amount > userProfile.cashBalance) {
+          throw new Error('User has insufficient cash balance for this withdrawal.');
+        }
 
-      return { success: true, message: 'Withdrawal approved ✅' };
-    }
-
-    if (action === 'reject') {
-      await adminDb.runTransaction(async (tx) => {
-        // This refunds the amount deducted at the time of request
+        // 1. Deduct from wallet
         tx.update(userRef, {
-          walletBalance: FieldValue.increment(req.amount),
-          cashBalance: FieldValue.increment(req.amount),
+          walletBalance: FieldValue.increment(-req.amount),
+          cashBalance: FieldValue.increment(-req.amount),
         });
+
+        // 2. Mark request as approved
+        tx.update(reqRef, {
+          status: 'approved',
+          processedAt: new Date().toISOString(),
+          processedBy: currentUser.uid,
+        });
+
+        // 3. Create transaction record
+        const newTxRef = adminDb.collection('transactions').doc();
+        tx.set(newTxRef, {
+            fromId: req.userId,
+            fromEmail: req.userEmail,
+            toId: 'bank',
+            toEmail: 'Bank Transfer',
+            amount: req.amount,
+            type: 'withdrawal',
+            paymentType: 'cash',
+            timestamp: new Date().toISOString(),
+        } as Omit<Transaction, 'id'>);
+
+        return { success: true, message: 'Withdrawal approved. Funds have been deducted from user wallet.' };
+      } else { // 'reject'
         tx.update(reqRef, {
           status: 'rejected',
           processedAt: new Date().toISOString(),
+          processedBy: currentUser.uid,
         });
-      });
-
-      return { success: true, message: 'Withdrawal rejected & amount refunded ❌' };
-    }
-
-    return { success: false, message: 'Invalid action.' };
-  } catch (err) {
+        return { success: true, message: 'Withdrawal request has been rejected.' };
+      }
+    });
+  } catch (err: any) {
     console.error('processWithdrawalRequest error:', err);
-    return { success: false, message: 'Server error while processing request.' };
+    return { success: false, message: err.message || 'Server error while processing request.' };
   }
 }
 
@@ -1388,6 +1407,7 @@ export async function processBankStatement(csvContent: string): Promise<{ succes
     const lines = csvContent.split('\n').slice(1); // Skip header
     let approvedCount = 0;
     let failedCount = 0;
+    let notFoundCount = 0;
 
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -1422,7 +1442,7 @@ export async function processBankStatement(csvContent: string): Promise<{ succes
                     failedCount++;
                 }
             } else {
-                failedCount++;
+                notFoundCount++;
             }
         } catch(e) {
             console.error(`Error processing line: ${line}`, e);
@@ -1430,7 +1450,7 @@ export async function processBankStatement(csvContent: string): Promise<{ succes
         }
     }
 
-    return { success: true, message: `Processing complete. Approved: ${approvedCount}. Failed/Not Found: ${failedCount}.` };
+    return { success: true, message: `Processing complete. Approved: ${approvedCount}. Not Found: ${notFoundCount}. Failed: ${failedCount}.` };
 }
 
 /** Admin: Set a custom commission rate for an agent */
@@ -1474,3 +1494,5 @@ export async function updateAgentCommission(
 }
 
     
+
+      
