@@ -126,7 +126,6 @@ const processWinners = async (
         }
         case 'half_sangam':
            if (resultType === 'close') {
-                // Open Panna + Close Ank OR Open Ank + Close Panna
                 const openPanna_closeAnk = openPanna && closeAnk ? `${openPanna}${closeAnk}` : undefined;
                 const openAnk_closePanna = openAnk && closePanna ? `${openAnk}${closePanna}` : undefined;
                 if ((openPanna_closeAnk && bet.numbers === openPanna_closeAnk) || (openAnk_closePanna && bet.numbers === openAnk_closePanna)) {
@@ -382,30 +381,23 @@ export async function GET(request: Request) {
                         const jodi = `${openAnk}${closeAnk}`;
                         const fullResult = `${openPanna}-${jodi}-${closePanna}`;
 
-                        const resultData: Partial<LotteryResult> = {
-                            ...resultDoc.data(),
+                        const finalResultData: LotteryResult = {
+                            lotteryName: lottery.name,
+                            drawDate: now.toISOString(),
+                            openPanna,
+                            openAnk,
                             jodi,
                             closePanna,
                             closeAnk,
                             fullResult,
                             status: 'closed',
+                            source: 'automatic'
                         };
                         
-                        transaction.set(resultDocRef, resultData, { merge: true });
+                        transaction.set(resultDocRef, finalResultData, { merge: true });
                         
-                        const historicalQuery = await adminDb.collection('historical_results')
-                            .where('lotteryName', '==', lottery.name)
-                            .where('openPanna', '==', openPanna)
-                            .orderBy('drawDate', 'desc').limit(1).get();
-
-                        if (!historicalQuery.empty) {
-                            const historicalDocRef = historicalQuery.docs[0].ref;
-                            transaction.update(historicalDocRef, resultData);
-                        } else {
-                            // This case should ideally not happen if open result was logged correctly
-                            const newHistoricalResultRef = adminDb.collection('historical_results').doc();
-                            transaction.set(newHistoricalResultRef, resultData);
-                        }
+                        const historicalResultRef = adminDb.collection('historical_results').doc();
+                        transaction.set(historicalResultRef, finalResultData);
                         
                         await processWinners(transaction, lottery.name, 'close', closeAnk, closePanna, {
                             openAnk,
