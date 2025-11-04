@@ -40,7 +40,7 @@ const safeNumber = (v: any, fallback = 0) =>
 
 // --- Helper function to generate a valid panna ---
 const generatePanna = (): string => {
-    let digits = new Set<number>();
+    const digits = new Set<number>();
     while (digits.size < 3) {
         digits.add(Math.floor(Math.random() * 10));
     }
@@ -75,8 +75,11 @@ const processWinners = async (
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
     { type: 'triple_panna', time: resultType },
-    { type: 'starline' }, // Starline is checked on both open and close
   ];
+  
+  if (lotteryName.toLowerCase().includes('starline')) {
+    checks.push({ type: 'starline' });
+  }
 
   if (resultType === 'close') {
     checks.push({ type: 'jodi' }, { type: 'half_sangam' }, { type: 'full_sangam' });
@@ -122,7 +125,6 @@ const processWinners = async (
           break;
         }
         case 'half_sangam': {
-          // Valid at close: either openPanna + closeAnk OR openAnk + closePanna (one digit)
           if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
              const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
              const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
@@ -133,7 +135,6 @@ const processWinners = async (
           break;
         }
         case 'full_sangam': {
-          // Valid at close: openPanna + closePanna
           if (resultType === 'close' && openPanna && closePanna) {
             if (bet.numbers === `${openPanna}${closePanna}`) {
               isWinner = true;
@@ -142,7 +143,6 @@ const processWinners = async (
           break;
         }
         case 'starline': {
-          // Starline result is the single winning ank
           if (bet.numbers === winningAnk) isWinner = true;
           break;
         }
@@ -173,7 +173,7 @@ const processWinners = async (
       } else if (resultType === 'close' && (!time || time === 'close')) {
         // At close declaration, remaining close bets (and jodi/sangam) are settled as lost
         transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (bet.betType !== 'starline' && resultType === 'open' && time === 'open') {
+      } else if (resultType === 'open' && time === 'open') {
          // Mark open bets as lost if they didn't win
          transaction.update(betDoc.ref, { status: 'lost' });
       }
@@ -413,13 +413,13 @@ export async function GET(request: Request) {
                         
                         const remainingBetsQuery = adminDb.collection('bets').where('lotteryName', '==', lottery.name).where('status', '==', 'placed');
                         const remainingBetsSnap = await transaction.get(remainingBetsQuery);
-remainingBetsSnap.forEach(betDoc => {
-    const bet = betDoc.data();
-    // Only mark as lost if it's not a winning starline bet that was just processed
-    if (bet.status === 'placed') {
-        transaction.update(betDoc.ref, { status: 'lost' });
-    }
-});
+                        remainingBetsSnap.forEach(betDoc => {
+                            const bet = betDoc.data();
+                            // Only mark as lost if it's not a winning starline bet that was just processed
+                            if (bet.status === 'placed') {
+                                transaction.update(betDoc.ref, { status: 'lost' });
+                            }
+                        });
 
                         await processCommissions(transaction, lottery.name);
 
