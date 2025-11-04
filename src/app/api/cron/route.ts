@@ -123,16 +123,16 @@ const processWinners = async (
           if (bet.numbers === winningPanna) isWinner = true;
           break;
         }
-        case 'half_sangam': {
-          if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
-             const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
-             const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
-            if (bet.numbers === pattern1 || bet.numbers === pattern2) {
-              isWinner = true;
-            }
-          }
+        case 'half_sangam':
+           if (resultType === 'close') {
+              // Open Panna + Close Ank OR Open Ank + Close Panna
+              if (openPanna && closeAnk && bet.numbers === `${openPanna}${closeAnk}`) {
+                  isWinner = true;
+              } else if (openAnk && closePanna && bet.numbers === `${openAnk}${closePanna}`) {
+                  isWinner = true;
+              }
+           }
           break;
-        }
         case 'full_sangam': {
           if (resultType === 'close' && openPanna && closePanna) {
             if (bet.numbers === `${openPanna}${closePanna}`) {
