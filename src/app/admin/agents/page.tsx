@@ -10,7 +10,7 @@ import { listUsers, updateUserStatus, deleteUser, updateAgentCommission } from '
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw, Search, Eye, Percent, MoreVertical, Trash2 } from 'lucide-react';
+import { IndianRupee, RefreshCw, Search, Eye, Percent, MoreVertical, Trash2, KeyRound } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,9 +37,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { cn } from '@/lib/utils';
-import { ManageWalletDialog, SetWalletLimitDialog } from '@/components/shared/UserActionsDialogs';
+import { ManageWalletDialog } from '@/components/shared/UserActionsDialogs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -255,51 +256,39 @@ export default function AgentsPage() {
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">{new Date(agent.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                         <div className="md:hidden">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem asChild><Link href={`/admin/agents/${agent.uid}`} className="flex items-center"><Eye className="mr-2 h-4 w-4"/>Report</Link></DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ManageWalletDialog user={agent} onUpdate={fetchAgents} /></DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><SetWalletLimitDialog user={agent} onUpdate={fetchAgents} /></DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                            <SetCommissionDialog agent={agent} onUpdate={fetchAgents} trigger={<div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/>Commission</div>} />
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChange(agent.uid, !agent.disabled)}>{agent.disabled ? 'Activate' : 'Deactivate'}</DropdownMenuItem>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4"/>Delete
-                                                </div>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the agent.</AlertDialogDescription></AlertDialogHeader>
-                                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(agent.uid)}>Continue</AlertDialogAction></AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                           </div>
-                         <div className="hidden md:flex items-center justify-end space-x-2">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={`/admin/agents/${agent.uid}`}>
-                                    <Eye className="h-4 w-4 mr-2" />Report
-                                </Link>
-                            </Button>
-                             <ManageWalletDialog user={agent} onUpdate={fetchAgents} />
-                             <SetCommissionDialog agent={agent} onUpdate={fetchAgents} trigger={<Button variant="outline" size="sm"><Percent className="h-4 w-4 mr-2" />Commission</Button>} />
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">Delete</Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the agent account.</AlertDialogDescription></AlertDialogHeader>
-                                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(agent.uid)}>Continue</AlertDialogAction></AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/admin/agents/${agent.uid}`} className="flex items-center"><Eye className="mr-2 h-4 w-4"/>View Report</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <ManageWalletDialog user={agent} onUpdate={fetchAgents} />
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                    <SetCommissionDialog agent={agent} onUpdate={fetchAgents} trigger={<div className="flex items-center w-full"><Percent className="mr-2 h-4 w-4"/>Set Commission</div>} />
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleStatusChange(agent.uid, !agent.disabled)}>
+                                     <KeyRound className="mr-2 h-4 w-4"/>{agent.disabled ? 'Activate' : 'Deactivate'}
+                                </DropdownMenuItem>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                            <Trash2 className="mr-2 h-4 w-4"/>Delete
+                                        </div>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the agent account and unassign their users.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(agent.uid)}>Continue</AlertDialogAction></AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -313,3 +302,4 @@ export default function AgentsPage() {
     </div>
   );
 }
+

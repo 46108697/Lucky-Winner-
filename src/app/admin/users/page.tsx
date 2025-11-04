@@ -10,7 +10,7 @@ import { listUsers, updateUserStatus, deleteUser, createUser, updateUserAgent } 
 import { UserProfile } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { IndianRupee, RefreshCw, UserPlus, Search, Eye, MoreVertical, Trash2 } from 'lucide-react';
+import { IndianRupee, RefreshCw, UserPlus, Search, Eye, MoreVertical, Trash2, Edit, KeyRound } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,7 +48,7 @@ import { CreateUserForm } from '@/components/shared/CreateUserForm';
 import Link from 'next/link';
 
 
-function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgentChanged: () => void }) {
+function ChangeAgentDialog({ user, onAgentChanged, trigger }: { user: UserProfile, onAgentChanged: () => void, trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [newAgentId, setNewAgentId] = useState(user.agentId || 'no-agent');
   const [agents, setAgents] = useState<UserProfile[]>([]);
@@ -82,7 +83,7 @@ function ChangeAgentDialog({ user, onAgentChanged }: { user: UserProfile, onAgen
   return (
     <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-            <Button variant="outline" size="sm">Change Agent</Button>
+            {trigger}
         </DialogTrigger>
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -296,76 +297,52 @@ export default function UsersPage() {
                             </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                           <div className="md:hidden">
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem asChild><Link href={`/admin/users/${user.uid}`} className="flex items-center"><Eye className="mr-2 h-4 w-4"/>View Details</Link></DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ManageWalletDialog user={user} onUpdate={fetchUsersAndAgents} /></DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><SetWalletLimitDialog user={user} onUpdate={fetchUsersAndAgents} /></DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}><ChangeAgentDialog user={user} onAgentChanged={fetchUsersAndAgents} /></DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleStatusChange(user.uid, !user.disabled)}>{user.disabled ? 'Activate' : 'Deactivate'}</DropdownMenuItem>
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
-                                                     <Trash2 className="mr-2 h-4 w-4" />
-                                                     Delete
-                                                </div>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This action cannot be undone. This will permanently delete the user account.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(user.uid)}>Continue</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                           </div>
-                           <div className="hidden md:flex items-center justify-end space-x-2">
-                                <Button asChild variant="outline" size="icon">
-                                    <Link href={`/admin/users/${user.uid}`}>
-                                        <Eye className="h-4 w-4" />
-                                    </Link>
-                                </Button>
-                                <ManageWalletDialog user={user} onUpdate={fetchUsersAndAgents} />
-                                <SetWalletLimitDialog user={user} onUpdate={fetchUsersAndAgents} />
-                                <ChangeAgentDialog user={user} onAgentChanged={fetchUsersAndAgents} />
-                                <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(user.uid, !user.disabled)}
-                                >
-                                {user.disabled ? 'Activate' : 'Deactivate'}
-                                </Button>
-                                <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="sm">Delete</Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This action cannot be undone. This will permanently delete the user account.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(user.uid)}>Continue</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/admin/users/${user.uid}`} className="flex items-center"><Eye className="mr-2 h-4 w-4"/>View Details</Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <ManageWalletDialog user={user} onUpdate={fetchUsersAndAgents} />
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                        <SetWalletLimitDialog user={user} onUpdate={fetchUsersAndAgents} />
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                         <ChangeAgentDialog user={user} onAgentChanged={fetchUsersAndAgents} trigger={
+                                            <div className="flex items-center w-full"><Users className="mr-2 h-4 w-4"/>Change Agent</div>
+                                         } />
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleStatusChange(user.uid, !user.disabled)}>
+                                        <KeyRound className="mr-2 h-4 w-4"/>{user.disabled ? 'Activate' : 'Deactivate'}
+                                    </DropdownMenuItem>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <div className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                                    <Trash2 className="mr-2 h-4 w-4"/>Delete
+                                            </div>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete the user account.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(user.uid)}>Continue</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </TableCell>
                         </TableRow>
                     ))
