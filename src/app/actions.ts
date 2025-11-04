@@ -128,7 +128,6 @@ const processWinners = async (
       userUpdates[bet.userId] = { wallet: 0, cash: 0 };
     }
     userUpdates[bet.userId].wallet += payout;
-    userUpdates[bet.userId].cash += payout;
 
     const txRef = adminDb.collection('transactions').doc();
     transaction.set(txRef, {
@@ -219,7 +218,6 @@ const processWinners = async (
     const userRef = adminDb.collection('users').doc(userId);
     transaction.update(userRef, {
       walletBalance: FieldValue.increment(userUpdates[userId].wallet),
-      cashBalance: FieldValue.increment(userUpdates[userId].cash),
     });
   }
 };
@@ -434,7 +432,7 @@ export async function placeBet(betDetails: {
 
       // balance check
       if (profile.cashBalance < amount)
-        return { success: false, message: 'Insufficient balance.' };
+        return { success: false, message: 'Insufficient cash balance.' };
 
       // deduct
       tx.update(userRef, { 
@@ -513,6 +511,9 @@ export async function declareResultManually(
         openPanna = panna;
         openAnk = ank;
       } else { // 'close'
+        if (!existingData.openPanna || !existingData.openAnk) {
+          throw new Error('Cannot declare close result before open result is declared.');
+        }
         openPanna = existingData.openPanna;
         openAnk = existingData.openAnk;
         closePanna = panna;
@@ -726,7 +727,7 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             const sortedAgents = Object.entries(agentCommissions).sort((a, b) => b[1] - a[1]);
             let topAgentInfo = { name: 'N/A', commission: 0 };
 
-            if (sortedAgents.length > 0) {
+            if (sortedAgents.length > 0 && sortedAgents[0][1] > 0) {
                 const [topAgentId, topCommission] = sortedAgents[0];
                  const agentDoc = await adminDb.collection('users').doc(topAgentId).get();
                 if(agentDoc.exists) {
