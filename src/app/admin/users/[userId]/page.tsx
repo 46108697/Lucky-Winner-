@@ -85,7 +85,7 @@ export default async function UserDetailsPage({ params }: { params: { userId: st
                     <ProfileDetail icon={Mail} label="Email" value={user.email} />
                     <ProfileDetail icon={Fingerprint} label="Customer ID" value={user.customId} />
                     <ProfileDetail icon={Phone} label="Mobile" value={user.mobile} />
-                    <ProfileDetail icon={Users} label="Agent ID" value={user.agentCustomId} />
+                    <ProfileDetail icon={Users} label="Agent ID" value={user.agentCustomId || 'N/A'} />
                     <ProfileDetail icon={Calendar} label="Joined On" value={new Date(user.createdAt).toLocaleDateString()} />
                     <ProfileDetail icon={IndianRupee} label="UPI ID" value={user.upiId} />
                      <div className="flex items-center gap-3">
@@ -173,4 +173,3 @@ export default async function UserDetailsPage({ params }: { params: { userId: st
         </div>
     );
 }
-

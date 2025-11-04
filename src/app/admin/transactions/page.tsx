@@ -40,8 +40,8 @@ export default function AdminTransactionsPage() {
             </div>
             <Card>
                 <CardHeader>
-                    <CardTitle>Admin Transaction History</CardTitle>
-                    <CardDescription>A record of all coins distributed to agents by admins.</CardDescription>
+                    <CardTitle>Platform Transaction History</CardTitle>
+                    <CardDescription>A record of all transactions across the platform.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
@@ -67,16 +67,19 @@ export default function AdminTransactionsPage() {
                                     {transactions.map((tx) => (
                                         <TableRow key={tx.id}>
                                             <TableCell>{new Date(tx.timestamp).toLocaleString()}</TableCell>
-                                            <TableCell>{tx.fromEmail}</TableCell>
-                                            <TableCell>{tx.toEmail}</TableCell>
+                                            <TableCell>{tx.fromEmail || tx.fromId}</TableCell>
+                                            <TableCell>{tx.toEmail || tx.toId}</TableCell>
                                             <TableCell>
                                                 <Badge variant={tx.paymentType === 'credit' ? 'secondary' : 'default'} className="capitalize">
-                                                    {tx.paymentType}
+                                                    {tx.type} ({tx.paymentType})
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-right font-medium text-green-400">
-                                                +<IndianRupee className="inline-block h-3 w-3 mx-1"/>
-                                                {tx.amount.toFixed(2)}
+                                            <TableCell className="text-right font-medium">
+                                                <span className={cn(tx.type === 'win' || tx.type === 'deposit' || tx.type === 'commission' ? 'text-green-400' : 'text-red-400')}>
+                                                  {tx.type === 'win' || tx.type === 'deposit' || tx.type === 'commission' ? '+' : '-'}
+                                                  <IndianRupee className="inline-block h-3 w-3 mx-1"/>
+                                                  {tx.amount.toFixed(2)}
+                                                </span>
                                             </TableCell>
                                         </TableRow>
                                     ))}

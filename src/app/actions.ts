@@ -126,8 +126,11 @@ const processWinners = async (
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
     { type: 'triple_panna', time: resultType },
-    { type: 'starline' }, // Starline is checked on both open and close
   ];
+  
+  if (lotteryName.toLowerCase().includes('starline')) {
+    checks.push({ type: 'starline' });
+  }
 
   if (resultType === 'close') {
     checks.push({ type: 'jodi' }, { type: 'half_sangam' }, { type: 'full_sangam' });
@@ -173,7 +176,6 @@ const processWinners = async (
           break;
         }
         case 'half_sangam': {
-          // Valid at close: either openPanna + closeAnk OR openAnk + closePanna (one digit)
           if (resultType === 'close' && openPanna && closeAnk && openAnk && closePanna) {
              const pattern1 = `${openPanna}${closeAnk}`; // Open Panna, Close Ank
              const pattern2 = `${openAnk}${closePanna}`; // Open Ank, Close Panna
@@ -184,7 +186,6 @@ const processWinners = async (
           break;
         }
         case 'full_sangam': {
-          // Valid at close: openPanna + closePanna
           if (resultType === 'close' && openPanna && closePanna) {
             if (bet.numbers === `${openPanna}${closePanna}`) {
               isWinner = true;
@@ -193,7 +194,6 @@ const processWinners = async (
           break;
         }
         case 'starline': {
-          // Starline result is the single winning ank
           if (bet.numbers === winningAnk) isWinner = true;
           break;
         }
@@ -224,7 +224,7 @@ const processWinners = async (
       } else if (resultType === 'close' && (!time || time === 'close')) {
         // At close declaration, remaining close bets (and jodi/sangam) are settled as lost
         transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (bet.betType !== 'starline' && resultType === 'open' && time === 'open') {
+      } else if (resultType === 'open' && time === 'open') {
          // Mark open bets as lost if they didn't win
          transaction.update(betDoc.ref, { status: 'lost' });
       }
@@ -517,7 +517,7 @@ export async function declareResultManually(
     const status: LotteryResult['status'] = resultType === 'open' ? 'open' : 'closed';
     const jodi = openAnk && closeAnk ? `${openAnk}${closeAnk}` : undefined;
     const fullResult =
-      openPanna && openAnk && closePanna ? `${openPanna}-${openAnk}-${closePanna}` : undefined;
+      openPanna && openAnk && closePanna && closeAnk ? `${openPanna}-${jodi}-${closePanna}` : undefined;
 
     // Save/Update result
     if (!resultDoc.exists) {
