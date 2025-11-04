@@ -505,14 +505,16 @@ export async function declareResultManually(
           openAnk: string | undefined,
           closePanna: string | undefined,
           closeAnk: string | undefined;
-      
-      const existingData = resultDoc.exists ? resultDoc.data() as LotteryResult : {};
 
       if (resultType === 'open') {
         openPanna = panna;
         openAnk = ank;
       } else { // 'close'
-        if (!resultDoc.exists || !existingData.openPanna || !existingData.openAnk) {
+        if (!resultDoc.exists) {
+          throw new Error('Cannot declare close result before open result is declared.');
+        }
+        const existingData = resultDoc.data() as LotteryResult;
+        if (!existingData.openPanna || !existingData.openAnk) {
           throw new Error('Cannot declare close result before open result is declared.');
         }
         openPanna = existingData.openPanna;
