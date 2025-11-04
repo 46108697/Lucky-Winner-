@@ -141,7 +141,7 @@ const processWinners = async (
       .where('status', '==', 'placed')
       .where('betType', '==', type);
 
-    if (time && type !== 'starline') {
+    if (time && type !== 'starline' && betType !== 'jodi') {
        q = q.where('betTime', '==', time);
     }
     
@@ -683,7 +683,8 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                 agentCommissions[tx.toId] = (agentCommissions[tx.toId] || 0) + tx.amount;
             });
             
-            const topAgentEntry = Object.entries(agentCommissions).sort((a, b) => b[1] - a[1])[0];
+            const sortedAgents = Object.entries(agentCommissions).sort((a, b) => b[1] - a[1]);
+            const topAgentEntry = sortedAgents.length > 0 ? sortedAgents[0] : null;
             let topAgentInfo = { name: 'N/A', commission: 0 };
 
             if(topAgentEntry) {
