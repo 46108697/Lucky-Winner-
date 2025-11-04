@@ -606,10 +606,12 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
     if (!currentUser) return { success: false, message: 'Unauthorized' };
 
     try {
-        // Logic for a specific agent's detailed report
-        if (agentId && (currentUser.role === 'admin' || (currentUser.role === 'agent' && currentUser.uid === agentId))) {
+        // Logic for a specific agent's detailed report (called by an admin)
+        if (agentId && currentUser.role === 'admin') {
             const agentDoc = await adminDb.collection('users').doc(agentId).get();
-            if (!agentDoc.exists) return { success: false, message: 'Agent not found.' };
+            if (!agentDoc.exists || agentDoc.data()?.role !== 'agent') {
+                 return { success: false, message: 'Agent not found.' };
+            }
 
             const agentData = { uid: agentDoc.id, ...agentDoc.data() } as UserProfile;
             const usersSnap = await adminDb.collection('users').where('agentId', '==', agentId).get();
@@ -1465,4 +1467,3 @@ export async function updateAgentCommission(
     
 
     
-
