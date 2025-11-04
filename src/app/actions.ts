@@ -120,83 +120,25 @@ const processWinners = async (
 ) => {
   const { rates } = await getGameSettings();
 
-  const betChecks: { type: BetType; time?: BetTime }[] = [];
-
+  // --- Handle Starline Games Separately ---
   if (lotteryName.toLowerCase().includes('starline')) {
-    betChecks.push({ type: 'starline' });
-  } else {
-     betChecks.push(
-        { type: 'single_ank', time: resultType },
-        { type: 'single_panna', time: resultType },
-        { type: 'double_panna', time: resultType },
-        { type: 'triple_panna', time: resultType },
-     );
-  }
-
-  if (resultType === 'close' && !lotteryName.toLowerCase().includes('starline')) {
-    betChecks.push({ type: 'jodi' });
-    betChecks.push({ type: 'half_sangam' });
-    betChecks.push({ type: 'full_sangam' });
-  }
-
-  for (const { type, time } of betChecks) {
-    let q = adminDb.collection('bets')
+    const starlineBetsQuery = adminDb.collection('bets')
       .where('lotteryName', '==', lotteryName)
       .where('status', '==', 'placed')
-      .where('betType', '==', type);
-
-    if (time && !['jodi', 'half_sangam', 'full_sangam'].includes(type)) {
-       q = q.where('betTime', '==', time);
-    }
+      .where('betType', '==', 'starline');
     
-    const snap = await transaction.get(q);
+    const snap = await transaction.get(starlineBetsQuery);
 
     for (const betDoc of snap.docs) {
       const bet = betDoc.data() as Bet;
       let isWinner = false;
 
-      const openAnk = openClosePair?.openAnk;
-      const closeAnk = openClosePair?.closeAnk;
-      const openPanna = openClosePair?.openPanna;
-      const closePanna = openClosePair?.closePanna;
-      const winningJodi = openAnk && closeAnk ? `${openAnk}${closeAnk}` : undefined;
-      
-      switch (bet.betType) {
-        case 'starline':
-          if (bet.numbers === winningAnk) isWinner = true;
-          break;
-        case 'single_ank':
-          if (bet.numbers === winningAnk) isWinner = true;
-          break;
-        case 'jodi':
-          if (resultType === 'close' && winningJodi && bet.numbers === winningJodi) {
-            isWinner = true;
-          }
-          break;
-        case 'single_panna':
-        case 'double_panna':
-        case 'triple_panna':
-          if (bet.numbers === winningPanna) isWinner = true;
-          break;
-        case 'half_sangam':
-           if (resultType === 'close' && openAnk && closeAnk && openPanna && closePanna) {
-                if (bet.numbers === `${openPanna}${closeAnk}` || bet.numbers === `${openAnk}${closePanna}`) {
-                    isWinner = true;
-                }
-           }
-          break;
-        case 'full_sangam':
-          if (resultType === 'close' && openPanna && closePanna && bet.numbers === `${openPanna}${closePanna}`) {
-            isWinner = true;
-          }
-          break;
+      if (bet.numbers === winningAnk) {
+        isWinner = true;
       }
       
       if (isWinner) {
-        const rateKey = bet.betType;
-        const rate = rates[rateKey] ?? 0;
-        const payout = bet.amount * rate;
-        
+        const payout = bet.amount * (rates.starline || 0);
         transaction.update(betDoc.ref, { status: 'won', payout });
         
         const userRef = adminDb.collection('users').doc(bet.userId);
@@ -207,25 +149,135 @@ const processWinners = async (
 
         const txRef = adminDb.collection('transactions').doc();
         transaction.set(txRef, {
-          fromId: 'game-pot',
-          toId: bet.userId,
-          toEmail: bet.userEmail,
-          amount: payout,
-          type: 'win',
-          paymentType: 'cash',
+          fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
+          amount: payout, type: 'win', paymentType: 'cash',
           timestamp: new Date().toISOString(),
         } as Omit<Transaction, 'id'>);
+      } else {
+        transaction.update(betDoc.ref, { status: 'lost' });
+      }
+    }
+    // Starline processing ends here.
+    return;
+  }
 
-      } else if (lotteryName.toLowerCase().includes('starline') && bet.betType === 'starline') {
+  // --- Handle Regular Open/Close Games ---
+  
+  // Bets to be settled only on OPEN result
+  if (resultType === 'open') {
+    const openBetTypes: BetType[] = ['single_ank', 'single_panna', 'double_panna', 'triple_panna'];
+    for (const type of openBetTypes) {
+      const q = adminDb.collection('bets')
+        .where('lotteryName', '==', lotteryName)
+        .where('status', '==', 'placed')
+        .where('betType', '==', type)
+        .where('betTime', '==', 'open');
+      
+      const snap = await transaction.get(q);
+
+      for (const betDoc of snap.docs) {
+        const bet = betDoc.data() as Bet;
+        let isWinner = false;
+        
+        if (type === 'single_ank' && bet.numbers === winningAnk) isWinner = true;
+        if (type.includes('panna') && bet.numbers === winningPanna) isWinner = true;
+
+        if (isWinner) {
+          const payout = bet.amount * (rates[type] || 0);
+          transaction.update(betDoc.ref, { status: 'won', payout });
+          
+          const userRef = adminDb.collection('users').doc(bet.userId);
+          transaction.update(userRef, {
+            walletBalance: FieldValue.increment(payout),
+            cashBalance: FieldValue.increment(payout),
+          });
+
+          const txRef = adminDb.collection('transactions').doc();
+          transaction.set(txRef, {
+            fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
+            amount: payout, type: 'win', paymentType: 'cash',
+            timestamp: new Date().toISOString(),
+          } as Omit<Transaction, 'id'>);
+        } else {
           transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (resultType === 'close') {
+        }
+      }
+    }
+  }
+
+  // Bets to be settled only on CLOSE result
+  if (resultType === 'close') {
+    // These bets only depend on the close result or a combination of open+close
+    const closeBetTypes: BetType[] = ['single_ank', 'single_panna', 'double_panna', 'triple_panna', 'jodi', 'half_sangam', 'full_sangam'];
+    const { openAnk, closeAnk, openPanna, closePanna } = openClosePair || {};
+
+    for (const type of closeBetTypes) {
+      let q = adminDb.collection('bets')
+        .where('lotteryName', '==', lotteryName)
+        .where('status', '==', 'placed')
+        .where('betType', '==', type);
+
+      // Filter by 'close' time for ank/panna bets
+      if (type.includes('ank') || type.includes('panna')) {
+        q = q.where('betTime', '==', 'close');
+      }
+
+      const snap = await transaction.get(q);
+
+      for (const betDoc of snap.docs) {
+        const bet = betDoc.data() as Bet;
+        let isWinner = false;
+
+        switch (type) {
+          case 'single_ank':
+            if (bet.numbers === winningAnk) isWinner = true;
+            break;
+          case 'single_panna':
+          case 'double_panna':
+          case 'triple_panna':
+            if (bet.numbers === winningPanna) isWinner = true;
+            break;
+          case 'jodi':
+            if (openAnk && closeAnk && bet.numbers === `${openAnk}${closeAnk}`) isWinner = true;
+            break;
+          case 'half_sangam':
+            if (openAnk && closeAnk && openPanna && closePanna) {
+              if (bet.numbers === `${openPanna}${closeAnk}` || bet.numbers === `${openAnk}${closePanna}`) {
+                isWinner = true;
+              }
+            }
+            break;
+          case 'full_sangam':
+            if (openPanna && closePanna && bet.numbers === `${openPanna}${closePanna}`) {
+              isWinner = true;
+            }
+            break;
+        }
+
+        if (isWinner) {
+          const payout = bet.amount * (rates[type] || 0);
+          transaction.update(betDoc.ref, { status: 'won', payout });
+
+          const userRef = adminDb.collection('users').doc(bet.userId);
+          transaction.update(userRef, {
+            walletBalance: FieldValue.increment(payout),
+            cashBalance: FieldValue.increment(payout),
+          });
+
+          const txRef = adminDb.collection('transactions').doc();
+          transaction.set(txRef, {
+            fromId: 'game-pot', toId: bet.userId, toEmail: bet.userEmail,
+            amount: payout, type: 'win', paymentType: 'cash',
+            timestamp: new Date().toISOString(),
+          } as Omit<Transaction, 'id'>);
+        } else {
           transaction.update(betDoc.ref, { status: 'lost' });
-      } else if (resultType === 'open' && bet.betTime === 'open') {
-         transaction.update(betDoc.ref, { status: 'lost' });
+        }
       }
     }
   }
 };
+
 
 const processCommissions = async (
   transaction: FirebaseFirestore.Transaction,
@@ -1523,3 +1575,4 @@ export async function updateAgentCommission(
     
 
     
+
