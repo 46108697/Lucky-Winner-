@@ -145,7 +145,9 @@ export default function AdminBetsPage() {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
-                fetchInitialData();
+                (async () => {
+                    await fetchInitialData();
+                })();
             } else {
                 router.push('/admin/login');
             }

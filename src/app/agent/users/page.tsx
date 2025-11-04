@@ -38,17 +38,19 @@ export default function AgentUsersPage() {
   }, []);
   
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
         if(user) {
-             const userDocRef = doc(db, "users", user.uid);
-             const userDocSnap = await getDoc(userDocRef);
-             if (userDocSnap.exists() && userDocSnap.data().role === 'agent') {
-                 const userProfile = userDocSnap.data() as UserProfile;
-                 setAgent({uid: user.uid, customId: userProfile.customId});
-                 fetchUsers(user.uid);
-            } else {
-                 router.push('/login');
-            }
+             (async () => {
+                 const userDocRef = doc(db, "users", user.uid);
+                 const userDocSnap = await getDoc(userDocRef);
+                 if (userDocSnap.exists() && userDocSnap.data().role === 'agent') {
+                     const userProfile = userDocSnap.data() as UserProfile;
+                     setAgent({uid: user.uid, customId: userProfile.customId});
+                     await fetchUsers(user.uid);
+                } else {
+                     router.push('/login');
+                }
+            })();
         } else {
             router.push('/login');
         }

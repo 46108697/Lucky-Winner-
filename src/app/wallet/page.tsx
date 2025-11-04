@@ -247,6 +247,10 @@ export default function UserWalletPage() {
                     }
                 });
                 
+                (async () => {
+                    await fetchData(user);
+                })();
+                
                 return () => unsubscribeProfile();
             } else {
                  router.push('/login');
@@ -254,13 +258,7 @@ export default function UserWalletPage() {
             }
         });
         return () => unsubscribeAuth();
-    }, [router]);
-
-    useEffect(() => {
-        if (currentUser) {
-            fetchData(currentUser);
-        }
-    }, [currentUser, fetchData]);
+    }, [router, fetchData]);
 
     const handleRefresh = () => {
         if(currentUser) {
