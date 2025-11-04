@@ -11,6 +11,8 @@ import { createAgent, createUser } from '@/app/actions';
 import { UserProfile } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { auth } from '@/lib/firebase/client';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 interface CreateUserFormProps {
     role: 'user' | 'agent';
@@ -19,17 +21,17 @@ interface CreateUserFormProps {
     title: string;
     description: string;
     onClose: () => void;
-    agentCustomId?: string; // For agent creating a user
 }
 
-export function CreateUserForm({ role, onAccountCreated, agents, title, description, onClose, agentCustomId }: CreateUserFormProps) {
+export function CreateUserForm({ role, onAccountCreated, agents, title, description, onClose }: CreateUserFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [mobile, setMobile] = useState('');
-    const [assignedAgentId, setAssignedAgentId] = useState(agentCustomId || 'no-agent');
+    const [assignedAgentUid, setAssignedAgentUid] = useState('no-agent');
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
+    const [currentUser] = useAuthState(auth);
 
     const handleCreateAccount = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,7 +48,13 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
             if (role === 'agent') {
                 result = await createAgent(name, email, mobile, password);
             } else {
-                result = await createUser(name, email, password, mobile, assignedAgentId);
+                // If the current user is an agent, their UID is automatically used.
+                // If admin, the selected UID from dropdown is used.
+                const agentUidForAction = currentUser?.email && (agents?.find(a=>a.uid === currentUser.uid))
+                    ? currentUser.uid
+                    : assignedAgentUid;
+
+                result = await createUser(name, email, password, mobile, agentUidForAction);
             }
             
 
@@ -56,7 +64,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
                 setEmail('');
                 setPassword('');
                 setMobile('');
-                setAssignedAgentId('no-agent');
+                setAssignedAgentUid('no-agent');
                 onAccountCreated();
                 onClose();
             } else {
@@ -70,6 +78,7 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
     };
 
     const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
+    const isAdminCreatingForUser = role === 'user' && agents !== undefined;
 
     return (
         <>
@@ -96,17 +105,17 @@ export function CreateUserForm({ role, onAccountCreated, agents, title, descript
                     <Label htmlFor={`password-${role}`}>Password</Label>
                     <Input id={`password-${role}`} type="password" placeholder="•••••••• (min. 6 characters)" required value={password} onChange={(e) => setPassword(e.target.value)} disabled={loading} />
                 </div>
-                {role === 'user' && agents && (
+                {isAdminCreatingForUser && (
                     <div className="space-y-2">
                         <Label htmlFor="agent-select">Assign to Agent (Optional)</Label>
-                        <Select value={assignedAgentId} onValueChange={setAssignedAgentId} disabled={loading || !!agentCustomId}>
+                        <Select value={assignedAgentUid} onValueChange={setAssignedAgentUid} disabled={loading}>
                             <SelectTrigger id="agent-select">
                                 <SelectValue placeholder="Select an agent..." />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="no-agent">No Agent (Admin User)</SelectItem>
                                 {agents.map(agent => (
-                                    <SelectItem key={agent.uid} value={agent.customId}>{agent.name} ({agent.customId})</SelectItem>
+                                    <SelectItem key={agent.uid} value={agent.uid}>{agent.name} ({agent.customId})</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>

@@ -56,16 +56,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Transactions collection
+    // Transactions collection - should only be written by server actions
     match /transactions/{transactionId} {
-       // Transactions should only be created via server-side actions, not directly by clients.
-       allow create: if false;
-       
        // Users can read their own transactions
        // Admins and Agents can see all transactions
        allow read: if isAuthenticated() && (request.auth.uid == resource.data.fromId || request.auth.uid == resource.data.toId || isAdmin() || isAgent());
        
-       allow update, delete: if false;
+       // NO client-side writes allowed
+       allow write: if false;
     }
     
     // Deposit Requests

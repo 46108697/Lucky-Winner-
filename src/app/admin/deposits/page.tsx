@@ -58,6 +58,9 @@ function BankStatementUploader({ onUploadSuccess }: { onUploadSuccess: () => voi
             }
              setLoading(false);
              setFile(null);
+             // Clear the file input
+             const fileInput = document.getElementById('csv-upload') as HTMLInputElement;
+             if(fileInput) fileInput.value = '';
         };
         reader.readAsText(file);
     };

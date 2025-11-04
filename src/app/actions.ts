@@ -126,6 +126,7 @@ const processWinners = async (
     { type: 'single_panna', time: resultType },
     { type: 'double_panna', time: resultType },
     { type: 'triple_panna', time: resultType },
+    { type: 'starline' }, // Starline is checked on both open and close
   ];
 
   if (resultType === 'close') {
@@ -192,7 +193,8 @@ const processWinners = async (
           break;
         }
         case 'starline': {
-          // Starline is separate; not processed here
+          // Starline result is the single winning ank
+          if (bet.numbers === winningAnk) isWinner = true;
           break;
         }
       }
@@ -374,12 +376,10 @@ export async function placeBet(betDetails: {
   if (!adminUser) return { success: false, message: 'Unauthorized.' };
   
   let targetUserId = adminUser.uid;
-  let placingForOther = false;
 
   // If admin is placing a bet for another user
   if (userId && adminUser.role === 'admin') {
       targetUserId = userId;
-      placingForOther = true;
   } else if (userId && adminUser.uid !== userId) {
       return { success: false, message: 'You can only place bets for yourself.' };
   }
@@ -462,10 +462,6 @@ export async function placeBet(betDetails: {
         timestamp: new Date().toISOString(),
       } as Omit<Transaction, 'id'>);
       
-      if(placingForOther) {
-          // Intentionally removed console.log
-      }
-
       return { success: true, message: 'Bet placed successfully!' };
     });
 
@@ -608,15 +604,21 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
     if (!currentUser) return { success: false, message: 'Unauthorized' };
 
     try {
-        // Logic for a specific agent's detailed report (called by an admin)
-        if (agentId && currentUser.role === 'admin') {
-            const agentDoc = await adminDb.collection('users').doc(agentId).get();
+        let targetAgentId = agentId;
+        // If an agent calls this for themselves, use their own UID.
+        if (currentUser.role === 'agent' && !targetAgentId) {
+            targetAgentId = currentUser.uid;
+        }
+
+        // Logic for an agent's report (can be called by admin for other agent, or agent for themselves)
+        if (targetAgentId && (currentUser.role === 'admin' || (currentUser.role === 'agent' && currentUser.uid === targetAgentId))) {
+            const agentDoc = await adminDb.collection('users').doc(targetAgentId).get();
             if (!agentDoc.exists || agentDoc.data()?.role !== 'agent') {
                  return { success: false, message: 'Agent not found.' };
             }
 
             const agentData = { uid: agentDoc.id, ...agentDoc.data() } as UserProfile;
-            const usersSnap = await adminDb.collection('users').where('agentId', '==', agentId).get();
+            const usersSnap = await adminDb.collection('users').where('agentId', '==', targetAgentId).get();
             const userIds = usersSnap.docs.map(doc => doc.id);
 
             let totalBetAmount = 0;
@@ -624,6 +626,8 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             const userBetCounts: Record<string, { email: string, name: string, count: number, amount: number }> = {};
 
             if (userIds.length > 0) {
+                // Firestore 'in' queries are limited to 30 elements. If an agent has more users, this needs chunking.
+                // For now, assuming agent has < 30 users for simplicity.
                 const betsSnap = await adminDb.collection('bets').where('userId', 'in', userIds).get();
                 betsSnap.forEach(doc => {
                     const bet = doc.data() as Bet;
@@ -636,7 +640,7 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                 });
             }
 
-            const commSnap = await adminDb.collection('transactions').where('toId', '==', agentId).where('type', '==', 'commission').get();
+            const commSnap = await adminDb.collection('transactions').where('toId', '==', targetAgentId).where('type', '==', 'commission').get();
             commSnap.forEach(doc => {
                 totalCommission += safeNumber(doc.data().amount);
             });
@@ -649,6 +653,19 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
                      return { ...data, name: userFromList?.name || 'Unknown' };
                 });
 
+            // If an agent is calling for themselves, return a simplified view
+            if (currentUser.role === 'agent') {
+                return {
+                    success: true,
+                    stats: {
+                        totalUsers: usersSnap.size,
+                        totalBets: userBetCounts ? Object.values(userBetCounts).reduce((acc, user) => acc + user.count, 0) : 0,
+                        totalCommission: totalCommission,
+                    }
+                };
+            }
+
+            // Full report for admin view
             return {
                 success: true,
                 stats: {
@@ -661,23 +678,6 @@ export async function getDashboardStats(agentId?: string): Promise<any> {
             };
         }
         
-        // Agent's own simple dashboard
-        if (currentUser.role === 'agent') {
-            const usersSnap = await adminDb.collection('users').where('agentId', '==', currentUser.uid).get();
-            const betsSnap = await adminDb.collection('bets').where('agentId', '==', currentUser.uid).get();
-            const commSnap = await adminDb.collection('transactions').where('toId', '==', currentUser.uid).where('type', '==', 'commission').get();
-            const commission = commSnap.docs.reduce((a, d) => a + safeNumber(d.data().amount), 0);
-
-            return {
-                success: true,
-                stats: {
-                    totalUsers: usersSnap.size,
-                    totalBets: betsSnap.size,
-                    totalCommission: commission,
-                }
-            };
-        }
-
         // Admin's main dashboard
         if (currentUser.role === 'admin') {
             const usersSnap = await adminDb.collection('users').where('role', '==', 'user').get();
@@ -802,7 +802,7 @@ export async function deleteUser(uid: string): Promise<{ success: boolean; messa
     await adminDb.collection('users').doc(uid).delete();
     await adminAuth.deleteUser(uid);
     return { success: true, message: 'User deleted successfully.' };
-  } catch (err: any) {
+  } catch (err: any) => {
     return { success: false, message: err.message || 'Failed to delete user.' };
   }
 }
@@ -813,7 +813,7 @@ export async function createUser(
   email: string,
   password?: string,
   mobile?: string,
-  agentCustomId?: string | 'no-agent'
+  agentUid?: string | 'no-agent'
 ): Promise<{ success: boolean; message: string }> {
   const currentUser = await getAuthorizedUser();
   if (!currentUser || !['admin', 'agent'].includes(currentUser.role))
@@ -829,17 +829,17 @@ export async function createUser(
     });
 
     let agentData: UserProfile | null = null;
-    let finalAgentCustomId: string | undefined = agentCustomId;
+    let finalAgentUid: string | undefined = agentUid;
     
     // If agent is creating, force their ID.
     if (currentUser.role === 'agent') {
-        finalAgentCustomId = currentUser.customId;
+        finalAgentUid = currentUser.uid;
     }
 
-    if (finalAgentCustomId && finalAgentCustomId !== 'no-agent') {
-        const agentSnap = await adminDb.collection('users').where('customId', '==', finalAgentCustomId).limit(1).get();
-        if(!agentSnap.empty) {
-            agentData = {uid: agentSnap.docs[0].id, ...agentSnap.docs[0].data()} as UserProfile
+    if (finalAgentUid && finalAgentUid !== 'no-agent') {
+        const agentDoc = await adminDb.collection('users').doc(finalAgentUid).get();
+        if(agentDoc.exists) {
+            agentData = {uid: agentDoc.id, ...agentDoc.data()} as UserProfile
         }
     }
    
@@ -1385,8 +1385,12 @@ export async function processBankStatement(csvContent: string): Promise<{ succes
     let failedCount = 0;
 
     for (const line of lines) {
+        if (!line.trim()) continue;
         const [txnId, amountStr] = line.split(',');
-        if (!txnId || !amountStr) continue;
+        if (!txnId || !amountStr) {
+            failedCount++;
+            continue;
+        };
         
         const amount = parseFloat(amountStr.trim());
         const cleanTxnId = txnId.trim();
@@ -1469,3 +1473,4 @@ export async function updateAgentCommission(
     
 
     
+

@@ -40,15 +40,15 @@ export default function AgentUsersPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
         if(user) {
-             (async () => {
-                 const userDocRef = doc(db, "users", user.uid);
-                 const userDocSnap = await getDoc(userDocRef);
-                 if (userDocSnap.exists() && userDocSnap.data().role === 'agent') {
-                     const userProfile = userDocSnap.data() as UserProfile;
-                     setAgent({uid: user.uid, customId: userProfile.customId});
-                     await fetchUsers(user.uid);
+            (async () => {
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+                if (userDocSnap.exists() && userDocSnap.data().role === 'agent') {
+                    const userProfile = userDocSnap.data() as UserProfile;
+                    setAgent({uid: user.uid, customId: userProfile.customId});
+                    await fetchUsers(user.uid);
                 } else {
-                     router.push('/login');
+                    router.push('/login');
                 }
             })();
         } else {
@@ -102,7 +102,6 @@ export default function AgentUsersPage() {
                          <CreateUserForm 
                             role="user" 
                             onAccountCreated={onUserCreated} 
-                            agentCustomId={agent?.customId}
                             title="Create New User" 
                             description={`A new user will be created under your agent ID (${agent?.customId}).`}
                             onClose={() => setIsCreateUserOpen(false)}
