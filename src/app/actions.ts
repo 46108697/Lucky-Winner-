@@ -287,26 +287,30 @@ const processCommissions = async (
    Public Actions
 -------------------------------------------- */
 
-/** Sign-in (create profile if new) */
+/**
+ * Create profile if new + return role for redirect
+ */
 export async function handleSignIn(
   uid: string,
   email: string | null,
   name: string | null
-): Promise<{ success: boolean; isNewUser: boolean; role: UserRole }> {
+): Promise<{ success: boolean; role: string; message: string }> {
   try {
     const userRef = adminDb.collection('users').doc(uid);
     const doc = await userRef.get();
 
+    // ✅ If profile exists → login success
     if (doc.exists) {
-      return { success: true, isNewUser: false, role: (doc.data() as UserProfile).role };
+      const data = doc.data() as UserProfile;
+      return { success: true, role: data.role, message: `Welcome back, ${data.name}!` };
     }
 
-    // If user is authenticated but has no profile, create one.
+    // ✅ Create profile if new (Default role = user)
     const profile: Omit<UserProfile, 'uid'> = {
       name: name || 'Lucky Player',
       email: email || '',
       role: 'user',
-      customId: `C${Math.random().toString().substring(2, 8)}`,
+      customId: `C${Math.random().toString().slice(2, 8)}`,
       createdAt: new Date().toISOString(),
       disabled: false,
       walletBalance: 100,
@@ -315,7 +319,8 @@ export async function handleSignIn(
     };
 
     await userRef.set(profile);
-
+    
+    // Add welcome bonus transaction
     const txRef = adminDb.collection('transactions').doc();
     await txRef.set({
       fromId: 'admin',
@@ -328,10 +333,12 @@ export async function handleSignIn(
       timestamp: new Date().toISOString(),
     } as Omit<Transaction, 'id'>);
 
-    return { success: true, isNewUser: true, role: 'user' };
+
+    return { success: true, role: 'user', message: 'Welcome! Bonus credited 🎁' };
+
   } catch (err) {
     console.error('handleSignIn error:', err);
-    return { success: false, isNewUser: false, role: 'user' };
+    return { success: false, role: 'user', message: 'Server error during sign-in.' };
   }
 }
 
@@ -500,8 +507,7 @@ export async function declareResultManually(
     await adminDb.runTransaction(async (transaction) => {
       const resultRef = adminDb.collection('results').doc(lotteryName);
       const resultDoc = await transaction.get(resultRef);
-      const existingData = (resultDoc.exists ? resultDoc.data() : {}) as Partial<LotteryResult>;
-
+      
       let openPanna: string | undefined,
           openAnk: string | undefined,
           closePanna: string | undefined,
@@ -511,8 +517,12 @@ export async function declareResultManually(
         openPanna = panna;
         openAnk = ank;
       } else { // 'close'
-        if (!resultDoc.exists || !existingData.openPanna || !existingData.openAnk) {
+        if (!resultDoc.exists) {
           throw new Error('Cannot declare close result before open result is declared.');
+        }
+        const existingData = resultDoc.data() as Partial<LotteryResult>;
+        if (!existingData.openPanna || !existingData.openAnk) {
+          throw new Error('Open result data is incomplete. Cannot declare close result.');
         }
         openPanna = existingData.openPanna;
         openAnk = existingData.openAnk;
