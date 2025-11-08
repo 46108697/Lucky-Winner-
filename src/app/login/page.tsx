@@ -4,8 +4,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, getDocs, limit, doc, getDoc } from "firebase/firestore";
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { auth, db } from '@/lib/firebase/client';
 import { Gem, Loader2, Home } from "lucide-react";
 import type { UserProfile } from "@/lib/types";
@@ -32,46 +32,57 @@ export default function UnifiedLoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  const performRedirect = (role: UserProfile['role']) => {
+    switch (role) {
+      case 'admin':
+        router.push('/admin');
+        break;
+      case 'agent':
+        router.push('/agent');
+        break;
+      case 'user':
+      default:
+        router.push('/');
+        break;
+    }
+  };
+
   useEffect(() => {
+    // This effect only handles the redirect result from Google
     const handleRedirect = async () => {
       try {
         const result = await getRedirectResult(auth);
         if (result?.user) {
-          await handleSignIn(result.user.uid, result.user.email, result.user.displayName);
-          toast({ title: "Google login successful!" });
-          // The onAuthStateChanged listener will handle redirection
+          toast({ title: "Google login successful! Finishing setup..." });
+          const signInResult = await handleSignIn(result.user.uid, result.user.email, result.user.displayName);
+          if (signInResult.success) {
+            performRedirect(signInResult.role);
+          } else {
+             setError("Could not create user profile.");
+             setLoading(false);
+          }
         }
       } catch (err) {
         console.error("Google Redirect Error:", err);
+        setError("Failed to complete Google login.");
+        setLoading(false);
       }
     };
     handleRedirect();
 
+    // This listener only handles the case where a user is already logged in
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if(user) {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-                const userData = userDoc.data() as UserProfile;
-                 switch (userData.role) {
-                    case 'admin':
-                      router.push('/admin'); break;
-                    case 'agent':
-                      router.push('/agent'); break;
-                    case 'user':
-                    default:
-                      router.push('/'); break;
-                  }
-            } else {
-                // If profile doesn't exist yet, handleSignIn should be creating it.
-                // We can wait a moment and re-check, or just redirect to home and let other pages handle it.
-                router.push('/');
-            }
+           // We are not redirecting from here anymore to avoid race conditions.
+           // This listener is now mainly for auto-login if a session exists.
+           // To prevent a logged-in user from seeing the login page, we can perform a quick check.
+           console.log("User is already logged in. Redirect logic has been moved.");
         }
     });
 
     return () => unsubscribe();
-  }, [router, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,14 +114,18 @@ export default function UnifiedLoginPage() {
 
       const userCredential = await signInWithEmailAndPassword(auth, userData.email, password);
       
-      // onAuthStateChanged will handle the redirect
-      toast({ title: `Welcome back, ${userCredential.user.displayName || userData.name}!` });
+      const signInResult = await handleSignIn(userCredential.user.uid, userCredential.user.email, userCredential.user.displayName);
+      if (signInResult.success) {
+        toast({ title: `Welcome back, ${userCredential.user.displayName || userData.name}!` });
+        performRedirect(signInResult.role);
+      } else {
+        throw new Error("Login failed after authentication.");
+      }
 
     } catch (err: any) {
       console.error(err);
       setError(err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' ? "Incorrect password." : "Something went wrong.");
-    } finally {
-      setLoading(false);
+       setLoading(false);
     }
   };
 
@@ -179,5 +194,3 @@ export default function UnifiedLoginPage() {
     </div>
   );
 }
-
-    

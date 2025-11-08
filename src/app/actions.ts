@@ -292,13 +292,13 @@ export async function handleSignIn(
   uid: string,
   email: string | null,
   name: string | null
-): Promise<{ success: boolean; isNewUser: boolean; message: string }> {
+): Promise<{ success: boolean; isNewUser: boolean; role: UserRole }> {
   try {
     const userRef = adminDb.collection('users').doc(uid);
     const doc = await userRef.get();
 
     if (doc.exists) {
-      return { success: true, isNewUser: false, message: 'Logged in successfully!' };
+      return { success: true, isNewUser: false, role: (doc.data() as UserProfile).role };
     }
 
     // If user is authenticated but has no profile, create one.
@@ -328,10 +328,10 @@ export async function handleSignIn(
       timestamp: new Date().toISOString(),
     } as Omit<Transaction, 'id'>);
 
-    return { success: true, isNewUser: true, message: 'Welcome! Bonus credited.' };
+    return { success: true, isNewUser: true, role: 'user' };
   } catch (err) {
     console.error('handleSignIn error:', err);
-    return { success: false, isNewUser: false, message: 'Server error during sign-in.' };
+    return { success: false, isNewUser: false, role: 'user' };
   }
 }
 
@@ -500,6 +500,7 @@ export async function declareResultManually(
     await adminDb.runTransaction(async (transaction) => {
       const resultRef = adminDb.collection('results').doc(lotteryName);
       const resultDoc = await transaction.get(resultRef);
+      const existingData = (resultDoc.exists ? resultDoc.data() : {}) as Partial<LotteryResult>;
 
       let openPanna: string | undefined,
           openAnk: string | undefined,
@@ -510,11 +511,7 @@ export async function declareResultManually(
         openPanna = panna;
         openAnk = ank;
       } else { // 'close'
-        if (!resultDoc.exists) {
-          throw new Error('Cannot declare close result before open result is declared.');
-        }
-        const existingData = resultDoc.data() as LotteryResult;
-        if (!existingData.openPanna || !existingData.openAnk) {
+        if (!resultDoc.exists || !existingData.openPanna || !existingData.openAnk) {
           throw new Error('Cannot declare close result before open result is declared.');
         }
         openPanna = existingData.openPanna;
